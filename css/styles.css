@@ -168,6 +168,10 @@ body {
     font-weight: 500;
 }
 
+.tab-short {
+    display: none;
+}
+
 .tab-button:hover {
     color: var(--accent-green);
 }
@@ -497,10 +501,22 @@ body.dark-mode .sidebar-handle {
     }
 
     .tab-button {
-        padding: 15px 15px;
+        padding: 15px 12px;
         font-size: 13px;
         white-space: nowrap;
         flex-shrink: 0;
+    }
+
+    .tab-full {
+        display: none;
+    }
+
+    .tab-short {
+        display: inline;
+    }
+
+    .dark-toggle {
+        font-size: 16px;
     }
 
     .content-area {
@@ -586,17 +602,18 @@ body.dark-mode .outline-item.active {
 .dark-toggle {
     background: none;
     border: none;
-    padding: 0;
+    padding: 8px;
     cursor: pointer;
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
+    font-size: 20px;
+    color: var(--text-color);
     margin-left: auto;
     align-self: center;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .dark-toggle:hover {
-    border-color: var(--accent-green);
     color: var(--accent-green);
 }

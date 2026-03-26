@@ -30,6 +30,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="https://palestinelist.com/images/favicon/apple-touch-icon.png" />
 <link rel="manifest" href="https://palestinelist.com/images/favicon/site.webmanifest" />
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body>
@@ -48,13 +49,13 @@
 <div class="tab-bar">
 <button class="hamburger" id="hamburger">☰</button>
 <div class="tabs">
-<button class="tab-button active" data-tab="home">Home</button>
-<button class="tab-button" data-tab="books">Books</button>
-<button class="tab-button" data-tab="film-video">Film &amp; Video</button>
-<button class="tab-button" data-tab="miscellaneous">Miscellaneous</button>
-<button class="tab-button" data-tab="citations">Citations</button>
-<button class="tab-button" data-tab="supplements">Supplements</button>
-<img id="dark-toggle" class="dark-toggle" src="images/nightmode.png" alt="Toggle Dark Mode"/>
+<button class="tab-button active" data-tab="home"><span class="tab-full">Home</span><span class="tab-short"><i class="fa-solid fa-house"></i></span></button>
+<button class="tab-button" data-tab="books"><span class="tab-full">Books</span><span class="tab-short"><i class="fa-solid fa-book"></i></span></button>
+<button class="tab-button" data-tab="film-video"><span class="tab-full">Film &amp; Video</span><span class="tab-short"><i class="fa-solid fa-film"></i></span></button>
+<button class="tab-button" data-tab="miscellaneous"><span class="tab-full">Miscellaneous</span><span class="tab-short">Misc.</span></button>
+<button class="tab-button" data-tab="citations"><span class="tab-full">Citations</span><span class="tab-short">Cite</span></button>
+<button class="tab-button" data-tab="supplements"><span class="tab-full">Supplements</span><span class="tab-short">Supplements</span></button>
+<button id="dark-toggle" class="dark-toggle" aria-label="Toggle Dark Mode"><i class="fa-solid fa-moon"></i></button>
 </div>
 </div>
 <div class="content-area" id="content-area">

@@ -20,7 +20,10 @@ class TabManager {
 
         // Set up tab buttons
         document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+            button.addEventListener('click', (e) => {
+                const tab = e.target.closest('.tab-button').dataset.tab;
+                if (tab) this.switchTab(tab);
+            });
         });
 
         // Set up hamburger menu
@@ -45,10 +48,10 @@ class TabManager {
         const darkToggle = document.getElementById('dark-toggle');
 
         if (darkToggle) {
+            const icon = darkToggle.querySelector('i');
             const setIcon = (isDark) => {
-                darkToggle.src = isDark 
-                    ? 'images/daymode.png' 
-                    : 'images/nightmode.png';
+                icon.classList.remove('fa-moon', 'fa-sun');
+                icon.classList.add(isDark ? 'fa-sun' : 'fa-moon');
             };
 
             // Restore saved preference
