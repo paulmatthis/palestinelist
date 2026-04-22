@@ -166,10 +166,20 @@ body {
     border-bottom: 3px solid transparent;
     transition: all 0.2s ease;
     font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    line-height: normal;
 }
 
 .tab-short {
     display: none;
+}
+
+.tab-button:hover,
+.tab-button:visited,
+.tab-button:focus {
+    color: var(--text-color);
+    text-decoration: none;
 }
 
 .tab-button:hover {

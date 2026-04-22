@@ -1,4 +1,25 @@
 // Tab management
+
+// Map URL hash → data-tab name (used for deep-linking like palestinelist.com/#books)
+const HASH_TO_TAB = {
+    'home': 'home',
+    'books': 'books',
+    'video': 'film-video',
+    'misc': 'miscellaneous',
+    'citations': 'citations',
+    'supplements': 'supplements'
+};
+
+// Inverse: data-tab name → hash fragment. Mirrors the `href` on each <a class="tab-button">.
+const TAB_TO_HASH = {
+    'home': 'home',
+    'books': 'books',
+    'film-video': 'video',
+    'miscellaneous': 'misc',
+    'citations': 'citations',
+    'supplements': 'supplements'
+};
+
 class TabManager {
     constructor() {
         this.activeTab = 'home';
@@ -18,13 +39,21 @@ class TabManager {
         document.body.appendChild(this.overlay);
         this.overlay.addEventListener('click', () => this.hideSidebar());
 
-        // Set up tab buttons
+        // Set up tab buttons. These are <a> tags with hrefs like "#books" so
+        // right-click → "Copy link address" gives a useful URL, but we
+        // intercept the click to avoid the browser jumping to the h1 anchor.
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', (e) => {
-                const tab = e.target.closest('.tab-button').dataset.tab;
+                // Allow modifier-clicks (open in new tab, etc.) to behave natively.
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
+                e.preventDefault();
+                const tab = e.currentTarget.dataset.tab;
                 if (tab) this.switchTab(tab);
             });
         });
+
+        // React to browser back/forward and to someone editing the URL hash.
+        window.addEventListener('hashchange', () => this.syncTabFromHash());
 
         // Set up hamburger menu
         this.hamburger.addEventListener('click', () => this.toggleSidebar());
@@ -40,8 +69,11 @@ class TabManager {
         // Set up scroll listener for active outline
         this.contentArea.addEventListener('scroll', () => this.updateActiveOutlineItem());
 
-        // Initialize first tab
-        this.switchTab('home');
+        // Initialize first tab based on URL hash (e.g. palestinelist.com/#books).
+        // Falls back to 'home' for empty/unknown hashes. We skip updating the URL
+        // on this initial call so landing on "/" doesn't rewrite to "/#home".
+        const initialTab = this.tabFromHash() || 'home';
+        this.switchTab(initialTab, { updateHash: false });
 
         // Dark mode toggle
 
@@ -71,7 +103,7 @@ class TabManager {
 
     }
 
-    switchTab(tabName) {
+    switchTab(tabName, { updateHash = true } = {}) {
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
@@ -87,7 +119,7 @@ class TabManager {
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
+        document.querySelector(`.tab-button[data-tab="${tabName}"]`)?.classList.add('active');
 
         this.activeTab = tabName;
 
@@ -99,6 +131,34 @@ class TabManager {
 
         // Hide sidebar on mobile
         this.hideSidebar();
+
+        // Sync URL hash so users can copy the current tab's link from the address bar.
+        // pushState avoids firing hashchange (which would re-enter this method).
+        if (updateHash) {
+            const desiredHash = TAB_TO_HASH[tabName];
+            if (desiredHash) {
+                const newHash = `#${desiredHash}`;
+                if (window.location.hash !== newHash) {
+                    history.pushState(null, '', newHash);
+                }
+            }
+        }
+    }
+
+    // Look up the tab that corresponds to the current window.location.hash.
+    // Returns null if the hash is empty or doesn't match a known tab alias
+    // (e.g. deep links to specific outline headings like #h.aql55nqrgcwb).
+    tabFromHash() {
+        const raw = (window.location.hash || '').replace(/^#/, '');
+        return HASH_TO_TAB[raw] || null;
+    }
+
+    syncTabFromHash() {
+        const tab = this.tabFromHash();
+        if (tab && tab !== this.activeTab) {
+            // Don't re-push the hash we just read from.
+            this.switchTab(tab, { updateHash: false });
+        }
     }
 
     generateOutline(tabName) {
