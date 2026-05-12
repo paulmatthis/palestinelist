@@ -107,6 +107,15 @@ body {
     padding-left: 12px;
 }
 
+/* Level-2 outline items are used by tabs that include h2 in the outline
+   (currently just the timeline subtab — eras like "Late Ottoman Empire").
+   They sit at the same indent as level-3 but read as the dominant tier. */
+.outline-item.level-2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
 .outline-item.level-4 {
     padding-left: 24px;
     font-size: 13px;
@@ -206,6 +215,64 @@ body {
     display: block;
 }
 
+/* Subtab bar — secondary nav inside a top-level tab. Visually lighter than
+   .tab-bar so the hierarchy is clear: top tabs are the primary nav, subtabs
+   carve out the active tab into named subsections. */
+.subtab-bar {
+    margin: -10px 0 24px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.subtabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.subtab-button {
+    background: none;
+    border: none;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-color);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    line-height: normal;
+    margin-bottom: -1px; /* overlap the bar's border so the active underline meets it cleanly */
+}
+
+.subtab-short {
+    display: none;
+}
+
+.subtab-button:hover,
+.subtab-button:visited,
+.subtab-button:focus {
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.subtab-button:hover {
+    color: var(--accent-green);
+}
+
+.subtab-button.active {
+    color: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+}
+
+.subtab-content {
+    display: none;
+}
+
+.subtab-content.active {
+    display: block;
+}
+
 /* Heading styles */
 .content-area h1 {
     font-size: 32px;
@@ -227,21 +294,135 @@ body {
     font-size: 22px;
     font-weight: 600;
     margin: 20px 0 12px 0;
-    color: #555;
+    color: var(--accent-black);
 }
 
 .content-area h4 {
     font-size: 18px;
     font-weight: 600;
     margin: 15px 0 10px 0;
-    color: #666;
+    color: var(--accent-black);
 }
 
 .content-area h5 {
     font-size: 16px;
     font-weight: 600;
     margin: 12px 0 8px 0;
-    color: #777;
+    color: var(--accent-black);
+}
+
+/* Timeline subtab — cap the column width so prose paragraphs don't
+   stretch the full content area on wide monitors. ~70-80 chars per line
+   is the readability sweet spot; 800px in our font lands near 90 chars,
+   which feels generous but not hostile. Centered with auto margins.
+   Images and figures inside follow this width via their own
+   max-width: 100% rule. */
+#subtab-timeline {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Starred top-level (h3) entries get a "hanging" star — the ⭐ sits in
+   the left margin while the title text continues to align with the rest
+   of the column. The negative text-indent shifts only the first line,
+   so any wrapped text naturally falls back to the column edge.
+   Other starred entries (h4/h5 sub-events) keep their inline star.
+   See mobile-escape media query at max-width: 768px below. */
+#subtab-timeline h3.starred {
+    text-indent: -1.5em;
+}
+
+/* Timeline images — center, slightly indent from the prose, and pair
+   each one with its alt text as a figcaption. Plain <img> (no figure
+   wrapper) appears for images we didn't auto-wrap (e.g. inline QR code)
+   so the centering needs to apply to both. */
+#subtab-timeline figure {
+    margin: 24px auto;
+    text-align: center;
+}
+
+#subtab-timeline figure img,
+#subtab-timeline > p > img {
+    display: block;
+    margin: 0 auto;
+    /* Cap rendered size so images fit comfortably in the prose column.
+       max-height keeps portrait orientations from dominating the screen.
+       The originals stay at full resolution for the lightbox view. */
+    max-width: min(100%, 400px);
+    max-height: 500px;
+    width: auto;
+    height: auto;
+    cursor: zoom-in;
+}
+
+#subtab-timeline figure.wide img,
+#subtab-timeline figure.wide {
+    max-width: 100%;
+    max-height: none;
+}
+
+#subtab-timeline figure.small img,
+#subtab-timeline figure.small {
+    max-width: min(100%, 200px);
+    max-height: none;
+}
+
+#subtab-timeline figcaption {
+    margin-top: 8px;
+    font-size: 13px;
+    font-style: italic;
+    color: #666;
+    line-height: 1.5;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+body.dark-mode #subtab-timeline figcaption {
+    color: #999;
+}
+
+#subtab-timeline > p > img,
+#subtab-timeline p:has(> img) {
+    /* Center bare <p><img> wrappers (the ones we didn't convert to figure). */
+    text-align: center;
+}
+
+#subtab-timeline > p > img {
+    display: block;
+    margin: 0 auto;
+}
+
+/* Timeline subtab — flatten the heading-size gradient. The timeline has
+   ~470 headings (14 era h2s, 33 h3s, 128 entry h4s, 298 sub-event h5s),
+   and the site's default sizes (28/22/18/16) make h4/h5 feel like
+   banners rather than entry titles. Each heading already carries an
+   inline <strong> for the event name, so the heading element itself
+   only needs to mark structure — not shout. ID-scoped so other subtabs
+   stay on the default scale.
+
+   Sizes step down gently so the outline-driven hierarchy is still
+   visible at a glance, without dominating the prose around them. */
+#subtab-timeline h2 {
+    font-size: 22px;
+    margin: 32px 0 12px 0;
+}
+
+#subtab-timeline h3 {
+    font-size: 15px;
+    margin: 22px 0 10px 0;
+}
+
+#subtab-timeline h4 {
+    font-size: 15px;
+    font-weight: 400;
+    margin: 14px 0 6px 0;
+}
+
+#subtab-timeline h5 {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 10px 0 4px 0;
 }
 
 /* Lists */
@@ -255,8 +436,30 @@ body {
     line-height: 1.7;
 }
 
+/* Cycle bullet styles by nesting depth: disc → circle → square → repeat.
+   The cascade naturally accumulates depth, so the deepest selector wins. */
 .content-area ul li {
     list-style-type: disc;
+}
+
+.content-area ul ul li {
+    list-style-type: circle;
+}
+
+.content-area ul ul ul li {
+    list-style-type: square;
+}
+
+.content-area ul ul ul ul li {
+    list-style-type: disc;
+}
+
+.content-area ul ul ul ul ul li {
+    list-style-type: circle;
+}
+
+.content-area ul ul ul ul ul ul li {
+    list-style-type: square;
 }
 
 .content-area ol li {
@@ -525,6 +728,19 @@ body.dark-mode .sidebar-handle {
         display: inline;
     }
 
+    .subtab-button {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .subtab-full {
+        display: none;
+    }
+
+    .subtab-short {
+        display: inline;
+    }
+
     .dark-toggle {
         font-size: 16px;
     }
@@ -544,6 +760,12 @@ body.dark-mode .sidebar-handle {
     .content-area h3 {
         font-size: 18px;
     }
+
+    /* Disable the starred-h3 hanging indent on mobile — the .content-area
+       padding is narrower here and the star would clip off the screen. */
+    #subtab-timeline h3.starred {
+        text-indent: 0;
+    }
 }
 
 @media (max-width: 480px) {
@@ -558,6 +780,76 @@ body.dark-mode .sidebar-handle {
     .tab-button {
         padding: 12px 12px;
         font-size: 12px;
+    }
+}
+
+/* Lightbox overlay — appears when a timeline image is clicked. Fixed
+   full-screen, dark backdrop, image centered with caption below. Click
+   anywhere on the backdrop or press Esc to dismiss. */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.92);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    cursor: zoom-out;
+}
+
+.lightbox-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lightbox-image {
+    max-width: 100%;
+    max-height: calc(100vh - 160px);
+    object-fit: contain;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    cursor: default;
+}
+
+.lightbox-caption {
+    margin-top: 16px;
+    color: #ddd;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+    max-width: 80ch;
+    line-height: 1.5;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 36px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 8px 12px;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+}
+
+.lightbox-close:hover {
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .lightbox-overlay {
+        padding: 20px;
+    }
+    .lightbox-image {
+        max-height: calc(100vh - 120px);
     }
 }
 
@@ -599,6 +891,11 @@ body.dark-mode .highlight {
 }
 
 body.dark-mode .tab-button.active {
+    color: #5cb85c;
+    border-bottom-color: #5cb85c;
+}
+
+body.dark-mode .subtab-button.active {
     color: #5cb85c;
     border-bottom-color: #5cb85c;
 }
