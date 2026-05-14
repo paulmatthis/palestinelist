@@ -1,7 +1,7 @@
 /**
  * PalestineList smart-search proxy.
  *
- * Deployed as a Cloudflare Worker (free tier — 100k requests/day) so the
+ * Deployed as a Cloudflare Worker so the
  * Thaura API key never touches the browser. The static site at
  * palestinelist.com POSTs candidate entries + a user query here; this worker
  * forwards to Thaura and streams the response back.
@@ -51,7 +51,7 @@ const MAX_CANDIDATES = 80;
 const MAX_QUERY_CHARS = 500;
 
 // Per-IP rate limit: N requests per WINDOW_MS, leaky-bucket style. This lives
-// in memory on a single isolate, so it's best-effort across edges — but it's
+// in memory on a single isolate, so it's best-effort across edges, but it's
 // enough to slow a single browser tab hammering the endpoint.
 const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
@@ -103,7 +103,7 @@ function getClientIp(request) {
 }
 
 // Build the system prompt for the recommendation endpoint. Kept short and
-// declarative — Thaura is asked to return strict JSON so we can render the
+// declarative. Thaura is asked to return strict JSON so we can render the
 // results without any post-processing parsing risk.
 function recommendSystemPrompt() {
   return [
@@ -113,7 +113,7 @@ function recommendSystemPrompt() {
     "the user is new to a topic or asks for the 'best' or 'must-read'.",
     "Mix formats (book, film, podcast, article) when the user hasn't specified",
     "one. Each pick must include a one-sentence 'why' written for the user,",
-    "≤25 words, plain and warm — not a sales pitch.",
+    "≤25 words, plain and warm, not a sales pitch.",
     "",
     "Respond with strict JSON only, no prose, in this exact shape:",
     '{ "note": "<one short line addressing the user>",',
@@ -194,7 +194,7 @@ async function callThaura({ env, systemPrompt, userPrompt, responseFormat }) {
   return content;
 }
 
-// Robust JSON extraction — Thaura's content may include stray prose around
+// Robust JSON extraction. Thaura's content may include stray prose around
 // the JSON object even with response_format. We grab the first {...} block.
 function parseModelJson(text) {
   if (!text) return null;
@@ -265,7 +265,7 @@ async function handleRecommend(request, env, cors) {
   }
 
   // Validate ids are real (the model is asked to pick from candidates, but
-  // we trust nothing — keep only ids that actually exist).
+  // we trust nothing. keep only ids that actually exist).
   const candidateIds = new Set(candidates.map((c) => c.id));
   const recs = parsed.recommendations
     .filter((r) => r && candidateIds.has(r.id) && typeof r.why === "string")
@@ -386,7 +386,7 @@ async function handleRequest(request, env) {
     const cors = corsHeaders(origin, allowedOrigins);
 
     // CORS preflight. Always echo back the allow-origin header even when the
-    // origin isn't on the allowlist — the browser still blocks the eventual
+    // origin isn't on the allowlist. the browser still blocks the eventual
     // request, but at least the preflight response is well-formed and any
     // 4xx body we send afterward is visible in the dev console.
     if (request.method === "OPTIONS") {

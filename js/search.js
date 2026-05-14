@@ -435,6 +435,10 @@
         // fresh state when the help panel opens.
         clearResultsArea();
         els.empty.hidden = true;
+        // Also wipe stale status text from either mode so a previous
+        // session's "Asking Thaura…" doesn't reappear when reopening.
+        setDecideStatus('guided', '');
+        setDecideStatus('free', '');
         // Focus the first field for keyboard users.
         const firstField = els.decide.querySelector('select, textarea');
         if (firstField) firstField.focus();
@@ -701,7 +705,7 @@
         const HARD_TIMEOUT_MS = 30000;
         let timedOut = false;
         const softWaitTimer = setTimeout(() => {
-            setDecideStatus(mode, "Still searching. This one's tricky", true);
+            setDecideStatus(mode, "Still searching", true);
         }, SOFT_WAIT_MS);
         const hardTimeoutTimer = setTimeout(() => {
             timedOut = true;
@@ -755,6 +759,9 @@
                 .filter(Boolean);
             renderResults(picks, [], whyById);
             setCredit(thauraCreditHtml());
+            // Clear the loading status so it doesn't linger as stale text
+            // when the user reopens the decide panel later.
+            setDecideStatus(mode, '');
             // Close the form so the recommendations get full attention.
             els.decide.hidden = true;
             els.helpButton.classList.remove('active');

@@ -1,4 +1,3 @@
-/* Main layout */
 :root {
     --sidebar-width: 250px;
     --accent-green: #228b22;
@@ -27,14 +26,12 @@ body {
     line-height: 1.6;
 }
 
-/* Container and main layout */
 .container {
     display: flex;
     height: 100vh;
     overflow: hidden;
 }
 
-/* Sidebar */
 .sidebar {
     width: var(--sidebar-width);
     background-color: var(--bg-light);
@@ -75,7 +72,6 @@ body {
     color: var(--text-color);
 }
 
-/* Outline navigation */
 .outline-nav {
     display: flex;
     flex-direction: column;
@@ -107,9 +103,6 @@ body {
     padding-left: 12px;
 }
 
-/* Level-2 outline items are used by tabs that include h2 in the outline
-   (currently just the timeline subtab — eras like "Late Ottoman Empire").
-   They sit at the same indent as level-3 but read as the dominant tier. */
 .outline-item.level-2 {
     font-size: 15px;
     font-weight: 600;
@@ -126,7 +119,6 @@ body {
     font-size: 12px;
 }
 
-/* Main content area */
 .main-content {
     margin-left: var(--sidebar-width);
     display: flex;
@@ -135,7 +127,6 @@ body {
     height: 100vh;
 }
 
-/* Tab bar */
 .tab-bar {
     background-color: var(--accent-white);
     border-bottom: 1px solid var(--border-color);
@@ -200,7 +191,6 @@ body {
     border-bottom-color: var(--accent-green);
 }
 
-/* Content area */
 .content-area {
     flex: 1;
     overflow-y: auto;
@@ -215,9 +205,6 @@ body {
     display: block;
 }
 
-/* Subtab bar — secondary nav inside a top-level tab. Visually lighter than
-   .tab-bar so the hierarchy is clear: top tabs are the primary nav, subtabs
-   carve out the active tab into named subsections. */
 .subtab-bar {
     margin: -10px 0 24px 0;
     border-bottom: 1px solid var(--border-color);
@@ -242,7 +229,7 @@ body {
     text-decoration: none;
     display: inline-block;
     line-height: normal;
-    margin-bottom: -1px; /* overlap the bar's border so the active underline meets it cleanly */
+    margin-bottom: -1px; 
 }
 
 .subtab-short {
@@ -273,7 +260,6 @@ body {
     display: block;
 }
 
-/* Heading styles */
 .content-area h1 {
     font-size: 32px;
     font-weight: 700;
@@ -311,31 +297,15 @@ body {
     color: var(--accent-black);
 }
 
-/* Timeline subtab — cap the column width so prose paragraphs don't
-   stretch the full content area on wide monitors. ~70-80 chars per line
-   is the readability sweet spot; 800px in our font lands near 90 chars,
-   which feels generous but not hostile. Centered with auto margins.
-   Images and figures inside follow this width via their own
-   max-width: 100% rule. */
 #subtab-timeline {
     max-width: 800px;
     margin: 0 auto;
 }
 
-/* Starred top-level (h3) entries get a "hanging" star — the ⭐ sits in
-   the left margin while the title text continues to align with the rest
-   of the column. The negative text-indent shifts only the first line,
-   so any wrapped text naturally falls back to the column edge.
-   Other starred entries (h4/h5 sub-events) keep their inline star.
-   See mobile-escape media query at max-width: 768px below. */
 #subtab-timeline h3.starred {
     text-indent: -1.5em;
 }
 
-/* Timeline images — center, slightly indent from the prose, and pair
-   each one with its alt text as a figcaption. Plain <img> (no figure
-   wrapper) appears for images we didn't auto-wrap (e.g. inline QR code)
-   so the centering needs to apply to both. */
 #subtab-timeline figure {
     margin: 24px auto;
     text-align: center;
@@ -345,9 +315,6 @@ body {
 #subtab-timeline > p > img {
     display: block;
     margin: 0 auto;
-    /* Cap rendered size so images fit comfortably in the prose column.
-       max-height keeps portrait orientations from dominating the screen.
-       The originals stay at full resolution for the lightbox view. */
     max-width: min(100%, 400px);
     max-height: 500px;
     width: auto;
@@ -384,7 +351,6 @@ body.dark-mode #subtab-timeline figcaption {
 
 #subtab-timeline > p > img,
 #subtab-timeline p:has(> img) {
-    /* Center bare <p><img> wrappers (the ones we didn't convert to figure). */
     text-align: center;
 }
 
@@ -393,16 +359,6 @@ body.dark-mode #subtab-timeline figcaption {
     margin: 0 auto;
 }
 
-/* Timeline subtab — flatten the heading-size gradient. The timeline has
-   ~470 headings (14 era h2s, 33 h3s, 128 entry h4s, 298 sub-event h5s),
-   and the site's default sizes (28/22/18/16) make h4/h5 feel like
-   banners rather than entry titles. Each heading already carries an
-   inline <strong> for the event name, so the heading element itself
-   only needs to mark structure — not shout. ID-scoped so other subtabs
-   stay on the default scale.
-
-   Sizes step down gently so the outline-driven hierarchy is still
-   visible at a glance, without dominating the prose around them. */
 #subtab-timeline h2 {
     font-size: 22px;
     margin: 32px 0 12px 0;
@@ -425,7 +381,6 @@ body.dark-mode #subtab-timeline figcaption {
     margin: 10px 0 4px 0;
 }
 
-/* Lists */
 .content-area ul,
 .content-area ol {
     margin: 15px 0 15px 30px;
@@ -436,8 +391,6 @@ body.dark-mode #subtab-timeline figcaption {
     line-height: 1.7;
 }
 
-/* Cycle bullet styles by nesting depth: disc → circle → square → repeat.
-   The cascade naturally accumulates depth, so the deepest selector wins. */
 .content-area ul li {
     list-style-type: disc;
 }
@@ -473,7 +426,6 @@ body.dark-mode #subtab-timeline figcaption {
     margin: 8px 0 8px 30px;
 }
 
-/* Links */
 .content-area a {
     color: var(--accent-green);
     text-decoration: none;
@@ -489,7 +441,6 @@ body.dark-mode #subtab-timeline figcaption {
     color: #8b4789;
 }
 
-/* Paragraphs */
 .content-area p {
     margin: 12px 0;
 }
@@ -501,14 +452,12 @@ body.dark-mode #subtab-timeline figcaption {
     font-weight: bold;
 }
 
-/* Images */
 .content-area img {
     max-width: 100%;
     height: auto;
     margin: 20px 0;
 }
 
-/* Banner */
 .banner-wrap {
     margin: -30px -40px 20px -40px;
     overflow: hidden;
@@ -536,7 +485,6 @@ body.dark-mode #subtab-timeline figcaption {
     }
 }
 
-/* Code blocks */
 .content-area code {
     background-color: var(--bg-light);
     padding: 2px 6px;
@@ -553,7 +501,6 @@ body.dark-mode #subtab-timeline figcaption {
     margin: 15px 0;
 }
 
-/* Blockquotes */
 .content-area blockquote {
     border-left: 4px solid var(--accent-green);
     padding-left: 15px;
@@ -562,7 +509,6 @@ body.dark-mode #subtab-timeline figcaption {
     font-style: italic;
 }
 
-/* Tables */
 .content-area table {
     width: 100%;
     border-collapse: collapse;
@@ -580,8 +526,6 @@ body.dark-mode #subtab-timeline figcaption {
     background-color: var(--bg-light);
     font-weight: 600;
 }
-
-/* Social grid */
 
 .social-grid {
     column-count: 3;
@@ -615,8 +559,6 @@ body.dark-mode #subtab-timeline figcaption {
     }
 }
 
-
-/* Bottom sheet overlay */
 .sidebar-overlay {
     display: none;
     position: fixed;
@@ -632,7 +574,6 @@ body.dark-mode #subtab-timeline figcaption {
     opacity: 1;
 }
 
-/* Bottom sheet drag handle */
 .sidebar-handle {
     display: none;
     width: 40px;
@@ -647,7 +588,6 @@ body.dark-mode .sidebar-handle {
     background: #555;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
@@ -761,8 +701,6 @@ body.dark-mode .sidebar-handle {
         font-size: 18px;
     }
 
-    /* Disable the starred-h3 hanging indent on mobile — the .content-area
-       padding is narrower here and the star would clip off the screen. */
     #subtab-timeline h3.starred {
         text-indent: 0;
     }
@@ -783,9 +721,6 @@ body.dark-mode .sidebar-handle {
     }
 }
 
-/* Lightbox overlay — appears when a timeline image is clicked. Fixed
-   full-screen, dark backdrop, image centered with caption below. Click
-   anywhere on the backdrop or press Esc to dismiss. */
 .lightbox-overlay {
     position: fixed;
     inset: 0;
@@ -853,7 +788,6 @@ body.dark-mode .sidebar-handle {
     }
 }
 
-/* Dark mode */
 body.dark-mode {
     --accent-white: #1a1a1a;
     --accent-black: #e8e8e8;
@@ -905,7 +839,6 @@ body.dark-mode .outline-item.active {
     border-left-color: #5cb85c;
 }
 
-/* Dark mode toggle */
 .dark-toggle {
     background: none;
     border: none;
@@ -925,15 +858,6 @@ body.dark-mode .outline-item.active {
     color: var(--accent-green);
 }
 
-/* ────────────────────────────────────────────────────────────────────────
-   Smart search
-   ────────────────────────────────────────────────────────────────────────
-   The search icon lives in the tab-bar next to the dark-mode toggle. When
-   clicked (or Cmd/Ctrl+K), it shows a fixed-position overlay with a modal
-   centered near the top of the viewport — the Linear/Notion pattern.
-   All colors use existing CSS variables so light/dark mode "just works".
-   ──────────────────────────────────────────────────────────────────────── */
-
 .search-toggle {
     background: none;
     border: none;
@@ -949,9 +873,6 @@ body.dark-mode .outline-item.active {
     flex-shrink: 0;
 }
 
-/* The dark-mode toggle already claims margin-left:auto, so when the search
-   button is also present we want THEM to be the rightmost cluster — drop
-   the search button's auto-margin in that case. */
 .search-toggle + .dark-toggle {
     margin-left: 4px;
 }
@@ -968,8 +889,6 @@ body.dark-mode .outline-item.active {
     border-radius: 4px;
 }
 
-/* The overlay covers the viewport and dims the page behind. Hidden by
-   default; .visible (toggled via JS) fades it in. */
 .search-overlay {
     position: fixed;
     inset: 0;
@@ -992,8 +911,6 @@ body.dark-mode .search-overlay {
     background: rgba(0, 0, 0, 0.7);
 }
 
-/* The modal itself: card-like, max 720px wide, sits near the top so the
-   keyboard doesn't shove it offscreen on mobile. */
 .search-modal {
     background: var(--accent-white);
     color: var(--text-color);
@@ -1014,9 +931,6 @@ body.dark-mode .search-overlay {
     gap: 10px;
     padding: 14px 16px;
     border-bottom: 1px solid var(--border-color);
-    /* Don't let the modal's flex layout compress the header when the
-       results body grows. The body's `flex: 1` should absorb space — we
-       want fixed heights on header / filters / footer. */
     flex-shrink: 0;
 }
 
@@ -1060,10 +974,6 @@ body.dark-mode .search-overlay {
     color: var(--accent-red);
 }
 
-/* Format filter chips — a horizontal row of pills under the search input.
-   "All" is the default; clicking any other pill narrows results to that
-   format. Pills scroll horizontally on narrow viewports so they always
-   stay on one row. */
 .search-filters {
     display: flex;
     align-items: center;
@@ -1072,9 +982,6 @@ body.dark-mode .search-overlay {
     border-bottom: 1px solid var(--border-color);
     overflow-x: auto;
     scrollbar-width: thin;
-    /* Don't let the modal's flex layout compress this row when the
-       results body grows — otherwise the chips get squished and the
-       text overflows. */
     flex-shrink: 0;
 }
 
@@ -1107,8 +1014,6 @@ body.dark-mode .search-overlay {
     outline-offset: 2px;
 }
 
-/* The body holds results, the help-row, the decide form, and the empty state.
-   It scrolls independently of the header/footer. */
 .search-body {
     flex: 1;
     overflow-y: auto;
@@ -1145,8 +1050,6 @@ body.dark-mode .search-overlay {
 .search-help-button i {
     color: var(--accent-green);
     font-size: 16px;
-    /* Rotate the compass when the decide panel opens (class toggled by JS).
-       Subtle 90° quarter-turn — feels like the dial swinging into action. */
     transition: transform 0.28s ease;
     transform-origin: center;
 }
@@ -1155,8 +1058,6 @@ body.dark-mode .search-overlay {
     transform: rotate(90deg);
 }
 
-/* "Help me decide" panel: tabs at top (guided / free-text), then the active
-   form below. Hidden until the user clicks the help button. */
 .search-decide {
     padding: 16px;
     border-bottom: 1px solid var(--border-color);
@@ -1192,12 +1093,6 @@ body.dark-mode .search-overlay {
     gap: 12px;
 }
 
-/* `display: grid` (and `display: flex`, etc.) overrides the HTML `hidden`
-   attribute, which relies on the user-agent stylesheet setting
-   `display: none`. We need to re-assert it explicitly so toggling the
-   `hidden` attribute actually hides the form. Same issue would bite the
-   freetext form if we ever gave it a custom display value, so I'm
-   covering both pre-emptively. */
 .search-decide-quiz[hidden],
 .search-decide-freetext[hidden] {
     display: none;
@@ -1272,10 +1167,6 @@ body.dark-mode .search-overlay {
     min-width: 0;
 }
 
-/* While a recommendation request is in flight, the status text wears
-   `.is-loading` and CSS appends animated dots that cycle . / .. / ...
-   so the user sees the indicator pulse — they know it's still working.
-   Static error/empty messages don't get this class. */
 .search-decide-status.is-loading::after {
     content: '.';
     animation: search-loading-dots 1.4s infinite;
@@ -1289,9 +1180,6 @@ body.dark-mode .search-overlay {
     100% { content: '.'; }
 }
 
-/* "How does this work?" inline link next to the Recommend button. Quiet
-   green underlined text — feels like a footnote, not a CTA. Clicking
-   opens a small bubble explaining Thaura's role. */
 .search-decide-info-wrap {
     position: relative;
     display: inline-flex;
@@ -1333,9 +1221,6 @@ body.dark-mode .search-decide-info:hover {
     text-decoration-color: #5cb85c;
 }
 
-/* The popup bubble itself. Positioned above the trigger so the modal's
-   bottom edge doesn't clip it (the actions row is near the bottom of
-   the form). */
 .search-decide-info-bubble {
     position: absolute;
     bottom: calc(100% + 8px);
@@ -1376,7 +1261,6 @@ body.dark-mode .search-decide-info-bubble a {
     margin-top: 8px;
 }
 
-/* The results list: dense rows, keyboard-highlightable, click-to-jump. */
 .search-results {
     list-style: none;
     margin: 0;
@@ -1473,7 +1357,6 @@ body.dark-mode .search-result mark {
     background: rgba(92, 184, 92, 0.25);
 }
 
-/* Empty/initial state — shown when there's no query and no results. */
 .search-empty {
     padding: 24px 16px;
     color: var(--text-color);
@@ -1491,7 +1374,6 @@ body.dark-mode .search-result mark {
     opacity: 0.8;
 }
 
-/* Footer: keyboard hints and the Thaura credit when AI mode is used. */
 .search-footer {
     display: flex;
     align-items: center;
@@ -1502,8 +1384,6 @@ body.dark-mode .search-result mark {
     font-size: 12px;
     color: var(--text-color);
     opacity: 0.85;
-    /* Don't let the modal's flex layout compress the footer when the
-       results body is tall. */
     flex-shrink: 0;
 }
 
@@ -1540,8 +1420,6 @@ body.dark-mode .search-result mark {
     font-family: -apple-system, SFMono-Regular, Menlo, monospace;
 }
 
-/* When the user clicks a search result we briefly highlight the destination
-   entry on the page so they can find it visually. */
 .search-jump-highlight {
     animation: search-pulse 1.6s ease-out;
 }
@@ -1560,7 +1438,6 @@ body.dark-mode .search-jump-highlight {
     100% { background-color: transparent; }
 }
 
-/* Mobile tweaks: full-bleed modal, smaller padding. */
 @media (max-width: 600px) {
     .search-overlay {
         padding: 12px;
@@ -1575,12 +1452,6 @@ body.dark-mode .search-jump-highlight {
         font-size: 13px;
     }
 
-    /* "How does this work?" bubble fix: on narrow viewports the bubble
-       was clipping off the left edge of the modal, because it positions
-       relative to the wrap (which sits well to the right in the actions
-       row, before the Recommend button). Hoist the positioning context
-       up to the actions row itself so the bubble can span the row's
-       full width instead of extending past the modal edge. */
     .search-decide-info-wrap {
         position: static;
     }
