@@ -1,0 +1,47 @@
+# Cloudflare Worker config for the PalestineList smart-search proxy.
+#
+# Deploy:
+#   1. Install wrangler once:  npm install -g wrangler
+#   2. Log in:                 wrangler login
+#   3. Set your secrets:
+#        wrangler secret put THAURA_API_KEY     (paste your Thaura key)
+#        wrangler secret put ALLOWED_ORIGIN     (e.g. https://palestinelist.com)
+#      Add a comma-separated list if you want to allow staging too:
+#        https://palestinelist.com,https://staging.palestinelist.com
+#   4. Deploy:                 wrangler deploy
+#
+# Cloudflare gives the worker a free *.workers.dev subdomain by default,
+# e.g. palestinelist-search.YOUR-SUBDOMAIN.workers.dev. The site can call that
+# directly, or you can add a custom subdomain like search.palestinelist.com
+# under the Worker's Triggers tab.
+
+name = "palestinelist-search"
+main = "worker.js"
+compatibility_date = "2026-05-13"
+
+# Disable the default *.workers.dev preview URL — we only want the worker
+# reachable at search.palestinelist.com, not via the public workers.dev
+# subdomain. (Matches the manual setting in the dashboard.)
+workers_dev = false
+preview_urls = false
+
+# Custom domain binding. This makes the worker answer requests at
+# https://search.palestinelist.com. Cloudflare auto-manages the DNS record
+# + SSL cert for the subdomain because the parent zone (palestinelist.com)
+# is already on Cloudflare. Keeping this in the file means future
+# `wrangler deploy` runs won't silently strip the binding.
+routes = [
+  { pattern = "search.palestinelist.com", custom_domain = true }
+]
+
+# No KV / Durable Objects needed — the in-memory rate limit is sufficient
+# for a low-traffic site. If abuse ever shows up, swap to:
+#   [[kv_namespaces]]
+#   binding = "RATE_LIMITS"
+#   id = "<your kv id>"
+# and adjust worker.js to read/write there.
+
+[observability]
+enabled = true
+[observability.logs]
+enabled = true

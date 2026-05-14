@@ -421,7 +421,7 @@ body.dark-mode #subtab-timeline figcaption {
 
 #subtab-timeline h5 {
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 400;
     margin: 10px 0 4px 0;
 }
 
@@ -923,4 +923,655 @@ body.dark-mode .outline-item.active {
 
 .dark-toggle:hover {
     color: var(--accent-green);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Smart search
+   ────────────────────────────────────────────────────────────────────────
+   The search icon lives in the tab-bar next to the dark-mode toggle. When
+   clicked (or Cmd/Ctrl+K), it shows a fixed-position overlay with a modal
+   centered near the top of the viewport — the Linear/Notion pattern.
+   All colors use existing CSS variables so light/dark mode "just works".
+   ──────────────────────────────────────────────────────────────────────── */
+
+.search-toggle {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-color);
+    margin-left: auto;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* The dark-mode toggle already claims margin-left:auto, so when the search
+   button is also present we want THEM to be the rightmost cluster — drop
+   the search button's auto-margin in that case. */
+.search-toggle + .dark-toggle {
+    margin-left: 4px;
+}
+
+.search-toggle:hover {
+    color: var(--accent-green);
+}
+
+.search-toggle:focus-visible,
+.search-close:focus-visible,
+.search-help-button:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* The overlay covers the viewport and dims the page behind. Hidden by
+   default; .visible (toggled via JS) fades it in. */
+.search-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 16px 16px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.search-overlay.visible {
+    display: flex;
+    opacity: 1;
+}
+
+body.dark-mode .search-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+/* The modal itself: card-like, max 720px wide, sits near the top so the
+   keyboard doesn't shove it offscreen on mobile. */
+.search-modal {
+    background: var(--accent-white);
+    color: var(--text-color);
+    width: 100%;
+    max-width: 720px;
+    max-height: calc(100vh - 80px);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.search-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    /* Don't let the modal's flex layout compress the header when the
+       results body grows. The body's `flex: 1` should absorb space — we
+       want fixed heights on header / filters / footer. */
+    flex-shrink: 0;
+}
+
+.search-input-icon {
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 17px;
+    color: var(--text-color);
+    font-family: inherit;
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-color);
+    opacity: 0.5;
+}
+
+.search-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.search-close:hover {
+    opacity: 1;
+    color: var(--accent-red);
+}
+
+/* Format filter chips — a horizontal row of pills under the search input.
+   "All" is the default; clicking any other pill narrows results to that
+   format. Pills scroll horizontally on narrow viewports so they always
+   stay on one row. */
+.search-filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    /* Don't let the modal's flex layout compress this row when the
+       results body grows — otherwise the chips get squished and the
+       text overflows. */
+    flex-shrink: 0;
+}
+
+.search-filter {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 4px 12px;
+    font-size: 13px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.search-filter:hover {
+    border-color: var(--accent-green);
+}
+
+.search-filter.active {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #fff;
+}
+
+.search-filter:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+}
+
+/* The body holds results, the help-row, the decide form, and the empty state.
+   It scrolls independently of the header/footer. */
+.search-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.search-help-row {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-light);
+}
+
+.search-help-button {
+    width: 100%;
+    background: var(--accent-white);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.search-help-button:hover {
+    border-color: var(--accent-green);
+    background: var(--bg-light);
+}
+
+.search-help-button i {
+    color: var(--accent-green);
+    font-size: 16px;
+    /* Rotate the compass when the decide panel opens (class toggled by JS).
+       Subtle 90° quarter-turn — feels like the dial swinging into action. */
+    transition: transform 0.28s ease;
+    transform-origin: center;
+}
+
+.search-help-button.active i {
+    transform: rotate(90deg);
+}
+
+/* "Help me decide" panel: tabs at top (guided / free-text), then the active
+   form below. Hidden until the user clicks the help button. */
+.search-decide {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-light);
+}
+
+.search-decide-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.search-decide-tab {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.search-decide-tab[aria-selected="true"] {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #fff;
+}
+
+.search-decide-quiz {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* `display: grid` (and `display: flex`, etc.) overrides the HTML `hidden`
+   attribute, which relies on the user-agent stylesheet setting
+   `display: none`. We need to re-assert it explicitly so toggling the
+   `hidden` attribute actually hides the form. Same issue would bite the
+   freetext form if we ever gave it a custom display value, so I'm
+   covering both pre-emptively. */
+.search-decide-quiz[hidden],
+.search-decide-freetext[hidden] {
+    display: none;
+}
+
+.search-decide-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.search-decide-field label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.search-decide-field select,
+.search-decide-freetext textarea {
+    border: 1px solid var(--border-color);
+    background: var(--accent-white);
+    color: var(--text-color);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.search-decide-freetext textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
+.search-decide-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.search-decide-go {
+    background: var(--accent-green);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.search-decide-go:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.search-decide-status {
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.7;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* While a recommendation request is in flight, the status text wears
+   `.is-loading` and CSS appends animated dots that cycle . / .. / ...
+   so the user sees the indicator pulse — they know it's still working.
+   Static error/empty messages don't get this class. */
+.search-decide-status.is-loading::after {
+    content: '.';
+    animation: search-loading-dots 1.4s infinite;
+    margin-left: 1px;
+}
+
+@keyframes search-loading-dots {
+    0%   { content: '.'; }
+    33%  { content: '..'; }
+    66%  { content: '...'; }
+    100% { content: '.'; }
+}
+
+/* "How does this work?" inline link next to the Recommend button. Quiet
+   green underlined text — feels like a footnote, not a CTA. Clicking
+   opens a small bubble explaining Thaura's role. */
+.search-decide-info-wrap {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.search-decide-info {
+    background: transparent;
+    border: none;
+    color: var(--accent-green);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(34, 139, 34, 0.4);
+}
+
+.search-decide-info:hover {
+    text-decoration-color: var(--accent-green);
+}
+
+.search-decide-info:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+body.dark-mode .search-decide-info {
+    color: #5cb85c;
+    text-decoration-color: rgba(92, 184, 92, 0.4);
+}
+
+body.dark-mode .search-decide-info:hover {
+    text-decoration-color: #5cb85c;
+}
+
+/* The popup bubble itself. Positioned above the trigger so the modal's
+   bottom edge doesn't clip it (the actions row is near the bottom of
+   the form). */
+.search-decide-info-bubble {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    background: var(--accent-white);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    text-align: left;
+}
+
+body.dark-mode .search-decide-info-bubble {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.search-decide-info-bubble a {
+    color: var(--accent-green);
+}
+
+body.dark-mode .search-decide-info-bubble a {
+    color: #5cb85c;
+}
+
+.search-decide-note {
+    grid-column: 1 / -1;
+    background: var(--accent-white);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--accent-green);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* The results list: dense rows, keyboard-highlightable, click-to-jump. */
+.search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.search-results:empty {
+    display: none;
+}
+
+.search-result {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    align-items: start;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result:hover,
+.search-result.active {
+    background: var(--bg-light);
+}
+
+.search-result .sr-title {
+    grid-column: 1;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-black);
+    line-height: 1.3;
+}
+
+body.dark-mode .search-result .sr-title {
+    color: var(--text-color);
+}
+
+.search-result .sr-meta {
+    grid-column: 2;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-color);
+    opacity: 0.65;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.search-result .sr-meta .sr-star {
+    color: #d4a017;
+}
+
+.search-result .sr-desc {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.8;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.search-result .sr-why {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: var(--accent-green);
+    line-height: 1.4;
+    font-style: italic;
+}
+
+.search-result .sr-section {
+    color: var(--text-color);
+    opacity: 0.55;
+}
+
+.search-result mark {
+    background: rgba(34, 139, 34, 0.18);
+    color: inherit;
+    padding: 0 1px;
+    border-radius: 2px;
+}
+
+body.dark-mode .search-result mark {
+    background: rgba(92, 184, 92, 0.25);
+}
+
+/* Empty/initial state — shown when there's no query and no results. */
+.search-empty {
+    padding: 24px 16px;
+    color: var(--text-color);
+    text-align: center;
+    opacity: 0.75;
+}
+
+.search-empty p {
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+
+.search-empty .search-hint {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+/* Footer: keyboard hints and the Thaura credit when AI mode is used. */
+.search-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-light);
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.85;
+    /* Don't let the modal's flex layout compress the footer when the
+       results body is tall. */
+    flex-shrink: 0;
+}
+
+.search-footer-key {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.search-footer-spacer {
+    flex: 1;
+}
+
+.search-footer-credit {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.search-footer-credit a {
+    color: var(--accent-green);
+    text-decoration: none;
+}
+
+.search-footer-credit a:hover {
+    text-decoration: underline;
+}
+
+.search-footer kbd {
+    background: var(--accent-white);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: -apple-system, SFMono-Regular, Menlo, monospace;
+}
+
+/* When the user clicks a search result we briefly highlight the destination
+   entry on the page so they can find it visually. */
+.search-jump-highlight {
+    animation: search-pulse 1.6s ease-out;
+}
+
+@keyframes search-pulse {
+    0%   { background-color: rgba(34, 139, 34, 0.25); }
+    100% { background-color: transparent; }
+}
+
+body.dark-mode .search-jump-highlight {
+    animation: search-pulse-dark 1.6s ease-out;
+}
+
+@keyframes search-pulse-dark {
+    0%   { background-color: rgba(92, 184, 92, 0.25); }
+    100% { background-color: transparent; }
+}
+
+/* Mobile tweaks: full-bleed modal, smaller padding. */
+@media (max-width: 600px) {
+    .search-overlay {
+        padding: 12px;
+    }
+    .search-modal {
+        max-height: calc(100vh - 24px);
+    }
+    .search-decide-quiz {
+        grid-template-columns: 1fr;
+    }
+    .search-help-button span {
+        font-size: 13px;
+    }
 }

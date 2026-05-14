@@ -66,7 +66,9 @@
                     <a class="tab-button" data-tab="citations" href="#citations"><span
                             class="tab-full">Citations</span><span class="tab-short">Cite</span></a>
                     <a class="tab-button" data-tab="supplements" href="#supplements"><span
-                            class="tab-full">Supplements</span><span class="tab-short">Supplements</span></a>
+                            class="tab-full">Supplements</span><span class="tab-short">More</span></a>
+                    <button id="search-toggle" class="search-toggle" aria-label="Open search (Cmd/Ctrl+K)"
+                            title="Search (⌘K)"><i class="fa-solid fa-magnifying-glass"></i></button>
                     <button id="dark-toggle" class="dark-toggle" aria-label="Toggle Dark Mode"><i
                             class="fa-solid fa-moon"></i></button>
                 </div>
@@ -13624,7 +13626,60 @@
             </div>
         </div>
     </div>
+    <!-- Smart search overlay. Hidden until the search icon (or Cmd/Ctrl+K) is pressed.
+         Markup is intentionally minimal — populated by js/search.js. -->
+    <div class="search-overlay" id="search-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="search-input" aria-hidden="true">
+        <div class="search-modal" role="document">
+            <div class="search-header">
+                <i class="fa-solid fa-magnifying-glass search-input-icon" aria-hidden="true"></i>
+                <input type="search" id="search-input" class="search-input"
+                       placeholder="Search books, films, articles, sources…"
+                       autocomplete="off" spellcheck="false"
+                       aria-controls="search-results" aria-autocomplete="list" />
+                <button class="search-close" id="search-close" aria-label="Close search">×</button>
+            </div>
+            <div class="search-filters" id="search-filters" role="group" aria-label="Filter by format">
+                <button class="search-filter active" type="button" data-format="all" aria-pressed="true">All</button>
+                <button class="search-filter" type="button" data-format="book" aria-pressed="false">Books</button>
+                <button class="search-filter" type="button" data-format="film" aria-pressed="false">Film &amp; Video</button>
+                <button class="search-filter" type="button" data-format="article" aria-pressed="false">Articles</button>
+                <button class="search-filter" type="button" data-format="citation" aria-pressed="false">Citations</button>
+                <button class="search-filter" type="button" data-format="other" aria-pressed="false">Other</button>
+            </div>
+            <div class="search-body">
+                <div class="search-help-row">
+                    <button class="search-help-button" id="search-help-decide">
+                        <i class="fa-solid fa-compass"></i>
+                        <span>Suggest something for me</span>
+                    </button>
+                </div>
+                <div class="search-decide" id="search-decide" hidden>
+                    <!-- Populated by js/search.js: tabs for guided / free-text, then a form / textarea. -->
+                </div>
+                <ul class="search-results" id="search-results" role="listbox"></ul>
+                <div class="search-empty" id="search-empty">
+                    <p>Start typing to search across all entries.</p>
+                    <p class="search-hint">Try a topic (<em>Nakba</em>), an author (<em>Rashid Khalidi</em>),
+                        or click "Help me decide" above for a personalized pick.</p>
+                </div>
+            </div>
+            <div class="search-footer">
+                <span class="search-footer-key"><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+                <span class="search-footer-key"><kbd>↵</kbd> open</span>
+                <span class="search-footer-key"><kbd>Esc</kbd> close</span>
+                <span class="search-footer-spacer"></span>
+                <span class="search-footer-credit" id="search-credit"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MiniSearch: tiny, fuzzy, in-browser full-text search (~25KB gzipped, MIT).
+         Hosted locally so the search works without a CDN round-trip and so we
+         don't ship an integrity hash we'd have to update on every version bump. -->
+    <script src="js/lib/minisearch.min.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/search.js"></script>
 </body>
 
 </html>

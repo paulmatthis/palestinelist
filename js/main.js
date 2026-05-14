@@ -510,7 +510,10 @@ class Lightbox {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new TabManager();
+    // Expose the TabManager instance so other scripts (e.g. js/search.js)
+    // can call switchTab() to jump to a tab/subtab without re-implementing
+    // the URL-hash and outline plumbing.
+    window.__tabManager = new TabManager();
     new Lightbox();
 });
 
