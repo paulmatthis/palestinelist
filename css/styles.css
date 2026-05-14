@@ -1574,4 +1574,22 @@ body.dark-mode .search-jump-highlight {
     .search-help-button span {
         font-size: 13px;
     }
+
+    /* "How does this work?" bubble fix: on narrow viewports the bubble
+       was clipping off the left edge of the modal, because it positions
+       relative to the wrap (which sits well to the right in the actions
+       row, before the Recommend button). Hoist the positioning context
+       up to the actions row itself so the bubble can span the row's
+       full width instead of extending past the modal edge. */
+    .search-decide-info-wrap {
+        position: static;
+    }
+    .search-decide-actions {
+        position: relative;
+    }
+    .search-decide-info-bubble {
+        left: 0;
+        right: 0;
+        width: auto;
+    }
 }
