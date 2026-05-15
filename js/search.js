@@ -162,8 +162,12 @@
             // `kind` is included so boostDocument can read it during scoring.
             storeFields: ['title', 'tab', 'subtab', 'section', 'subsection', 'description', 'starred', 'anchor', 'url', 'kind', 'author', 'year'],
             // MiniSearch tokenizes strings — `year` is stored as a number in
-            // the catalog, so coerce to string here so it's indexed properly.
+            // the catalog, so coerce non-id fields to string here so they're
+            // indexed properly. The id field MUST be returned as-is so the
+            // numeric ids match the keys in entryById; stringifying it here
+            // silently broke keyword search (every entryById.get() missed).
             extractField: (doc, field) => {
+                if (field === 'id') return doc.id;
                 const v = doc[field];
                 return v == null ? '' : String(v);
             },
