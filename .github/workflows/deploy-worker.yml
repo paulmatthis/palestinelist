@@ -1,0 +1,78 @@
+# Deploys the Cloudflare Worker (smart-search proxy) automatically on pushes
+# that change anything inside worker/.
+#
+# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  – a Cloudflare API token with "Edit Workers" permission
+#   CLOUDFLARE_ACCOUNT_ID – your Cloudflare account ID (shown in Workers dashboard)
+#   THAURA_API_KEY        – your Thaura API key
+#   ALLOWED_ORIGIN        – e.g. https://palestinelist.com
+#
+# How to create the Cloudflare API token:
+#   Cloudflare dashboard → My Profile → API Tokens → Create Token
+#   → Use the "Edit Cloudflare Workers" template
+#   → Scope it to your account and the palestinelist.com zone
+
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "worker/**"           # only runs when worker files change
+  workflow_dispatch:          # allows manual re-run from the Actions tab
+
+jobs:
+  deploy:
+    name: Deploy worker
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: worker  # all steps run inside the worker/ folder
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy worker script
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy
+
+      # Push secrets into the worker. `echo` pipes the value so there's no
+      # interactive prompt. GitHub masks the secret values in logs automatically.
+      - name: Set THAURA_API_KEY secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          THAURA_API_KEY: ${{ secrets.THAURA_API_KEY }}
+        run: echo "$THAURA_API_KEY" | wrangler secret put THAURA_API_KEY
+
+      - name: Set ALLOWED_ORIGIN secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ALLOWED_ORIGIN: ${{ secrets.ALLOWED_ORIGIN }}
+        run: echo "$ALLOWED_ORIGIN" | wrangler secret put ALLOWED_ORIGIN
+
+      - name: Smoke test
+        run: |
+          echo "Waiting for worker to propagate..."
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://search.palestinelist.com/api/healthz)
+          echo "Healthz returned: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Worker healthcheck failed!"
+            exit 1
+          fi
+          echo "Worker is up."
