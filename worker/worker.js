@@ -37,9 +37,9 @@
  *   - Per-IP rate limit (token bucket in memory) so a single visitor can't
  *     drain credits. Persistence across worker isolates is best-effort —
  *     Cloudflare KV/Durable Objects would be the durable option if abuse
- *     becomes a real problem.
+ *     becomes a real problem. 
  *   - Max candidates per request is capped so prompt costs stay predictable.
- */
+ */ 
 
 const THAURA_ENDPOINT = "https://backend.thaura.ai/v1/chat/completions";
 const THAURA_MODEL = "thaura";

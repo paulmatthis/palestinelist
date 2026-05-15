@@ -10,7 +10,7 @@
 # How to create the Cloudflare API token:
 #   Cloudflare dashboard → My Profile → API Tokens → Create Token
 #   → Use the "Edit Cloudflare Workers" template
-#   → Scope it to your account and the palestinelist.com zone
+#   → Scope it to your account and the palestinelist.com zone 
 
 name: Deploy Cloudflare Worker
 
