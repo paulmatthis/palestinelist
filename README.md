@@ -1,12 +1,12 @@
 # The Palestine List
 
-A curated, sourced reference site — **Sources, Citations & Other Media for Start Here: Palestine**.
+**Sources, Citations & Other Media for Start Here: Palestine** curated and referenced. 
 
 Live site: [palestinelist.com](https://palestinelist.com)
 
 ## About
 
-The Palestine List is a static website providing citations, sources, and media resources related to Palestine. It is designed as a companion reference to the START HERE: Palestine series, as well as anyone looking to learn more and verify information.
+The Palestine List website provides citations, sources, and media related to Palestine. It is designed as a companion reference to the START HERE: Palestine series, as well as anyone looking to learn more and verify information.
 
 ## Project Structure
 
