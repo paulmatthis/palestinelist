@@ -153,14 +153,25 @@
         miniIndex = new MiniSearch({
             idField: 'id',
             // Fields we want to score against. `byline` carries trailing
-            // heading text — author, year, subtitle — so a full-string
-            // query like "<Title> by <Author>" can match.
-            fields: ['title', 'byline', 'section', 'subsection', 'description'],
+            // heading text — subtitle and similar — so a full-string query
+            // like "<Title> by <Author>" can match. `author` and `year`
+            // are first-class so searching "Edward Said" or "2020" finds
+            // entries even when those terms aren't in the title.
+            fields: ['title', 'author', 'year', 'byline', 'section', 'subsection', 'description'],
             // Fields we want to read back without re-fetching from the catalog.
             // `kind` is included so boostDocument can read it during scoring.
-            storeFields: ['title', 'tab', 'subtab', 'section', 'subsection', 'description', 'starred', 'anchor', 'url', 'kind'],
+            storeFields: ['title', 'tab', 'subtab', 'section', 'subsection', 'description', 'starred', 'anchor', 'url', 'kind', 'author', 'year'],
+            // MiniSearch tokenizes strings — `year` is stored as a number in
+            // the catalog, so coerce to string here so it's indexed properly.
+            extractField: (doc, field) => {
+                const v = doc[field];
+                return v == null ? '' : String(v);
+            },
             searchOptions: {
-                boost: { title: 3, byline: 2.5, subsection: 2, section: 1.5 },
+                // Author gets the same weight as title so a query like
+                // "Edward Said" surfaces books by him, not just books that
+                // happen to mention him in the title.
+                boost: { title: 3, author: 3, byline: 2.5, subsection: 2, section: 1.5 },
                 prefix: true,        // "khal" matches "Khalidi"
                 fuzzy: 0.18,         // typo tolerance, ~1 edit in 6 chars
                 combineWith: 'AND',  // multi-word queries must all match
@@ -276,12 +287,23 @@
                 `<span>${escapeHtml(tabLabel(e))}</span>`,
                 e.section ? `<span class="sr-section">· ${escapeHtml(e.section)}</span>` : '',
             ].filter(Boolean).join(' ');
+            // Author + year live on their own line directly under the title.
+            // Either or both may be missing — only render the line when we
+            // have at least one piece, joined by " · " for visual rhythm.
+            const bylineBits = [
+                e.author ? highlight(e.author, terms) : '',
+                e.year ? highlight(String(e.year), terms) : '',
+            ].filter(Boolean);
+            const bylineRow = bylineBits.length
+                ? `<div class="sr-byline">${bylineBits.join(' · ')}</div>`
+                : '';
             const why = whyById && whyById.get(e.id);
             return (
                 `<li class="search-result${i === activeIndex ? ' active' : ''}" ` +
                 `role="option" data-id="${e.id}" data-index="${i}">` +
                 `<div class="sr-title">${highlight(e.title, terms)}</div>` +
                 `<div class="sr-meta">${meta}</div>` +
+                bylineRow +
                 (why
                     ? `<div class="sr-why">${escapeHtml(why)}</div>`
                     : e.description
