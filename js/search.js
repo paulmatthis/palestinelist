@@ -425,10 +425,20 @@
     function compactForAI(e) {
         // Mirrors worker.js compactCandidate exactly so the model sees a
         // consistent shape regardless of which endpoint we hit.
+        //
+        // Author and year are included even though the keyword pre-filter
+        // already used them — Thaura needs to see them on each candidate
+        // to answer queries like "a book by Karl Sabbagh" or "something
+        // from 2024". Without them in the payload the model has to guess
+        // from the title/description alone, which causes timeouts (the
+        // model thrashes) and hallucinations ("we don't have any books
+        // by X"). They're tiny strings so the budget impact is trivial.
         const out = { id: e.id, title: e.title, tab: e.tab };
         if (e.subtab) out.subtab = e.subtab;
         if (e.section) out.section = e.section;
         if (e.starred) out.starred = true;
+        if (e.author) out.author = e.author;
+        if (e.year) out.year = e.year;
         if (e.description) {
             out.description = e.description.length > 200
                 ? e.description.slice(0, 200).replace(/\s\S*$/, '') + '…'

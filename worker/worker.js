@@ -109,11 +109,15 @@ function recommendSystemPrompt() {
   return [
     "You are the curator for PalestineList, a sourced reference for Palestine.",
     "Given a user request and a list of candidate entries from the catalog,",
-    "pick 3 entries that best match. Prefer entries marked starred=true when",
-    "the user is new to a topic or asks for the 'best' or 'must-read'.",
-    "Mix formats (book, film, podcast, article) when the user hasn't specified",
-    "one. Each pick must include a one-sentence 'why' written for the user,",
-    "≤25 words, plain and warm, not a sales pitch.",
+    "pick 3 entries that best match. Each candidate may carry author and year",
+    "fields — treat those as authoritative. If the user names an author, pick",
+    "entries whose author matches; if they name a year or era, prefer matching",
+    "year. Never claim the catalog lacks an author whose name actually appears",
+    "on a candidate. Prefer entries marked starred=true when the user is new",
+    "to a topic or asks for the 'best' or 'must-read'. Mix formats (book,",
+    "film, podcast, article) when the user hasn't specified one. Each pick",
+    "must include a one-sentence 'why' written for the user, ≤25 words,",
+    "plain and warm, not a sales pitch.",
     "",
     "Respond with strict JSON only, no prose, in this exact shape:",
     '{ "note": "<one short line addressing the user>",',
@@ -126,8 +130,10 @@ function semanticSystemPrompt() {
   return [
     "You are ranking PalestineList catalog entries for relevance to a search.",
     "Given a user query and a list of candidate entries, return the candidate",
-    "ids in best-fit order (most relevant first). Include only entries that",
-    "are actually relevant; drop irrelevant ones entirely.",
+    "ids in best-fit order (most relevant first). Each candidate may carry",
+    "author and year fields — treat those as authoritative when the query",
+    "names an author or a year. Include only entries that are actually",
+    "relevant; drop irrelevant ones entirely.",
     "",
     "Respond with strict JSON only, no prose, in this exact shape:",
     '{ "ranked": [<id>, <id>, ...] }',
@@ -137,11 +143,22 @@ function semanticSystemPrompt() {
 // Compact a candidate down to the minimum useful for the model. Strips
 // descriptions to ~200 chars so a 60-candidate prompt stays well under
 // 25k tokens (Thaura is cheap, but cheap × careless = real money).
+//
+// IMPORTANT: author and year are first-class. Catalog entries record
+// them as their own fields and the keyword pre-filter scores against
+// them; we MUST forward them here too or the model has no signal to
+// answer "books by X" and "something from <year>" queries. The client's
+// compactForAI mirrors this shape — if you add or remove a field, update
+// both. (Earlier versions of this function omitted author/year, which
+// caused author-based queries to time out or hallucinate negative
+// answers like "we don't have any books by X".)
 function compactCandidate(c) {
   const out = { id: c.id, title: c.title, tab: c.tab };
   if (c.subtab) out.subtab = c.subtab;
   if (c.section) out.section = c.section;
   if (c.starred) out.starred = true;
+  if (c.author) out.author = c.author;
+  if (c.year) out.year = c.year;
   if (c.description) {
     out.description =
       c.description.length > 200
