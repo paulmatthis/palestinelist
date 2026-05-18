@@ -28,3 +28,6 @@ Thumbs.db
 
 # Dev-only preview (rendered output is baked into index.html)
 citations-preview.html
+
+# Local-only session handoff notes for Cowork
+HANDOFF.md
