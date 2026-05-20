@@ -1,14 +1,22 @@
 // Tab management
 
 // Map URL hash → data-tab name (used for deep-linking like palestinelist.com/#books)
+// 'book' / 'author' / 'publisher' are modal sub-hashes consumed by js/books.js;
+// they all live on the books tab so deep links land there before the modal opens.
 const HASH_TO_TAB = {
     'home': 'home',
     'books': 'books',
+    'book': 'books',
+    'author': 'books',
+    'publisher': 'books',
     'video': 'film-video',
     'misc': 'miscellaneous',
     'citations': 'citations',
     'supplements': 'supplements'
 };
+
+// Hashes that js/books.js owns — main.js should NOT canonicalize these away.
+const MODAL_HASH_RE = /^#(book|author|publisher)\//;
 
 // Inverse: data-tab name → hash fragment. Mirrors the `href` on each <a class="tab-button">.
 const TAB_TO_HASH = {
@@ -284,6 +292,9 @@ class TabManager {
     // on landing if the URL is non-canonical (e.g. an aliased subtab slug)
     // so we don't pollute history with the rewritten entry.
     canonicalizeHash() {
+        // Don't rewrite modal hashes (owned by js/books.js); landing on
+        // #book/<isbn> etc. must preserve the full fragment.
+        if (MODAL_HASH_RE.test(window.location.hash)) return;
         const canonical = this.canonicalHash();
         if (canonical && window.location.hash !== canonical) {
             history.replaceState(null, '', canonical);

@@ -284,7 +284,7 @@ body {
 }
 
 .content-area h4 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     margin: 15px 0 10px 0;
     color: var(--accent-black);
@@ -424,6 +424,22 @@ body.dark-mode #subtab-timeline figcaption {
 .content-area ul ol,
 .content-area ol ul {
     margin: 8px 0 8px 30px;
+}
+
+/* Subsection blocks inside the books tab.
+   Each <section class="books-subsection-block"> is indented relative to
+   its parent section's content, so it reads as a sub-group rather than
+   as a continuation of the section's main list. A small bottom margin
+   creates breathing room between subsections (Bund → One-State Solution
+   → etc.) and between the last subsection and the next section heading.
+   The subsection's <h4> heading still picks up the standard heading
+   styling and shows in the outline. */
+.books-subsection-block {
+    margin-left: 24px;
+    margin-bottom: 24px;
+}
+.books-subsection-block .books-subsection-heading {
+    margin-top: 18px;
 }
 
 .content-area a {
@@ -1471,5 +1487,12 @@ body.dark-mode .search-jump-highlight {
         left: 0;
         right: 0;
         width: auto;
+    }
+}
+
+@media (min-width: 601px) {
+    .myth-list {
+        padding-left: 2.5em;
+        line-height: 1.4;
     }
 }
