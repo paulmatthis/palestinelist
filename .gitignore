@@ -26,8 +26,8 @@ Thumbs.db
 !.dev.vars.example
 !.env.example
 
-# Dev-only preview (rendered output is baked into index.html)
-citations-preview.html
+# Pre-cleanup search index backup
+search-index.json.backup
 
 # Local-only session handoff notes for Cowork
 HANDOFF.md
