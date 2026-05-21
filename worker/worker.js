@@ -105,19 +105,41 @@ function getClientIp(request) {
 // Build the system prompt for the recommendation endpoint. Kept short and
 // declarative. Thaura is asked to return strict JSON so we can render the
 // results without any post-processing parsing risk.
+//
+// Candidate schema (compactCandidate): id, title, tab, format?, section?,
+// subsection?, starred?, authors? (array), subtitle?, year?,
+// publication_date?, publisher?, page_count?, language? (omitted when "eng"),
+// tags? (array, ≤8), rating?, kind?, description? (truncated to ~200 chars).
 function recommendSystemPrompt() {
   return [
     "You are the curator for PalestineList, a sourced reference for Palestine.",
     "Given a user request and a list of candidate entries from the catalog,",
-    "pick 3 entries that best match. Each candidate may carry author and year",
-    "fields — treat those as authoritative. If the user names an author, pick",
-    "entries whose author matches; if they name a year or era, prefer matching",
-    "year. Never claim the catalog lacks an author whose name actually appears",
-    "on a candidate. Prefer entries marked starred=true when the user is new",
-    "to a topic or asks for the 'best' or 'must-read'. Mix formats (book,",
-    "film, podcast, article) when the user hasn't specified one. Each pick",
-    "must include a one-sentence 'why' written for the user, ≤25 words,",
-    "plain and warm, not a sales pitch.",
+    "pick 3 entries that best match. Treat every field on a candidate as",
+    "authoritative:",
+    "• authors (array): if the user names an author, pick entries whose authors",
+    "  array contains a matching name. Never claim the catalog lacks an author",
+    "  whose name appears on a candidate.",
+    "• year / publication_date: if the user names a year, era, or 'recent',",
+    "  prefer matching entries. publication_date is more specific than year.",
+    "• publisher: pick by publisher when the user names one (e.g. 'Verso',",
+    "  'Haymarket').",
+    "• subtitle: a real signal of subject matter — use it like a mini-description.",
+    "• page_count: for 'short', 'quick read', or 'a long book' style requests.",
+    "  Under ~150 pp is short; 400+ is long.",
+    "• language: present only when non-English. Honor language requests.",
+    "• tags: topic hints (e.g. 'memoir', 'history', 'poetry'). Match on these.",
+    "• subsection: curated grouping (e.g. 'Big Five', 'Bund', 'One-State",
+    "  Solution'). Use when the user asks about that theme.",
+    "• rating: editorial 0–5 score — break ties by preferring higher ratings.",
+    "• starred: prefer when the user is new to a topic or asks for the 'best'",
+    "  or 'must-read'.",
+    "• kind='list' entries are bibliographies, not single works — only pick",
+    "  them when the user explicitly wants a reading list or roundup.",
+    "Mix formats (book, film, podcast, article) when the user hasn't",
+    "specified one. Each pick must include a one-sentence 'why' written for",
+    "the user, ≤25 words, plain and warm, not a sales pitch — quote a",
+    "concrete detail from the candidate (an author, year, subtitle, or tag)",
+    "when it helps the user decide.",
     "",
     "Respond with strict JSON only, no prose, in this exact shape:",
     '{ "note": "<one short line addressing the user>",',
@@ -130,10 +152,14 @@ function semanticSystemPrompt() {
   return [
     "You are ranking PalestineList catalog entries for relevance to a search.",
     "Given a user query and a list of candidate entries, return the candidate",
-    "ids in best-fit order (most relevant first). Each candidate may carry",
-    "author and year fields — treat those as authoritative when the query",
-    "names an author or a year. Include only entries that are actually",
-    "relevant; drop irrelevant ones entirely.",
+    "ids in best-fit order (most relevant first). Treat every field as",
+    "authoritative: authors (array) for author queries, year /",
+    "publication_date for time queries, publisher for publisher queries,",
+    "subtitle / tags / subsection for topic queries, page_count for length",
+    "queries, language for non-English requests, rating to break ties.",
+    "kind='list' entries are bibliographies — rank them low unless the query",
+    "is explicitly asking for a reading list. Include only entries that are",
+    "actually relevant; drop irrelevant ones entirely.",
     "",
     "Respond with strict JSON only, no prose, in this exact shape:",
     '{ "ranked": [<id>, <id>, ...] }',
@@ -144,21 +170,55 @@ function semanticSystemPrompt() {
 // descriptions to ~200 chars so a 60-candidate prompt stays well under
 // 25k tokens (Thaura is cheap, but cheap × careless = real money).
 //
-// IMPORTANT: author and year are first-class. Catalog entries record
-// them as their own fields and the keyword pre-filter scores against
-// them; we MUST forward them here too or the model has no signal to
-// answer "books by X" and "something from <year>" queries. The client's
-// compactForAI mirrors this shape — if you add or remove a field, update
-// both. (Earlier versions of this function omitted author/year, which
-// caused author-based queries to time out or hallucinate negative
-// answers like "we don't have any books by X".)
+// IMPORTANT: every field listed here is first-class. Catalog entries
+// record them and the keyword pre-filter scores against them; we MUST
+// forward them or the model has no signal to answer "books by X",
+// "Verso titles", "something from 2024", or "a short read" queries.
+// The client's compactForAI mirrors this shape — IF YOU ADD OR REMOVE
+// A FIELD, UPDATE BOTH. (Earlier versions of this function omitted
+// author/year, which caused author-based queries to time out or
+// hallucinate negative answers like "we don't have any books by X".)
+//
+// The catalog has two shapes: v2 books (authors[], subtitle, publisher,
+// publication_date, page_count, language, tags, rating, cover_image)
+// and legacy non-book entries (author string, byline). The client
+// normalizes everything to `authors` (array) and `subtitle`, but we
+// defensively accept legacy `author`/`byline` here too in case anyone
+// posts directly to /api/recommend with raw catalog rows.
 function compactCandidate(c) {
   const out = { id: c.id, title: c.title, tab: c.tab };
   if (c.subtab) out.subtab = c.subtab;
   if (c.section) out.section = c.section;
+  if (c.subsection) out.subsection = c.subsection;
+  if (c.format && c.format !== "other") out.format = c.format;
   if (c.starred) out.starred = true;
-  if (c.author) out.author = c.author;
+
+  // Authors: prefer array; wrap legacy string into one-element array.
+  if (Array.isArray(c.authors) && c.authors.length > 0) {
+    out.authors = c.authors.filter(Boolean);
+  } else if (c.author) {
+    out.authors = [c.author];
+  }
+
+  // Subtitle: prefer v2 field; fall back to legacy byline.
+  const sub = c.subtitle || c.byline;
+  if (sub) out.subtitle = sub;
+
   if (c.year) out.year = c.year;
+  if (c.publisher) out.publisher = c.publisher;
+  if (c.publication_date && c.publication_date !== String(c.year)) {
+    out.publication_date = c.publication_date;
+  }
+  if (Number.isFinite(c.page_count)) out.page_count = c.page_count;
+  // Only forward language when it's not English — saves tokens and the
+  // model can safely assume English by default for this catalog.
+  if (c.language && c.language !== "eng") out.language = c.language;
+  if (Array.isArray(c.tags) && c.tags.length > 0) {
+    out.tags = c.tags.slice(0, 8);
+  }
+  if (Number.isFinite(c.rating)) out.rating = c.rating;
+  if (c.kind === "list") out.kind = "list";
+
   if (c.description) {
     out.description =
       c.description.length > 200

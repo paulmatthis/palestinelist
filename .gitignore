@@ -34,3 +34,8 @@ HANDOFF.md
 
 # Local-only editor app
 editor.html
+
+# Node deps (only ever installed locally for one-off scripts; not used at runtime)
+node_modules/
+package.json
+package-lock.json

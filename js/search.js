@@ -152,30 +152,90 @@
         }
         miniIndex = new MiniSearch({
             idField: 'id',
-            // Fields we want to score against. `byline` carries trailing
-            // heading text — subtitle and similar — so a full-string query
-            // like "<Title> by <Author>" can match. `author` and `year`
-            // are first-class so searching "Edward Said" or "2020" finds
-            // entries even when those terms aren't in the title.
-            fields: ['title', 'author', 'year', 'byline', 'section', 'subsection', 'description'],
+            // Fields we want to score against. The catalog uses two shapes:
+            //   - books-v2: `authors` (array), `subtitle`, plus publisher /
+            //     publication_date / language / tags / isbn from Open Library.
+            //   - legacy non-books: `author` (string), `byline` (subtitle-ish).
+            // We list both shapes here and let extractField normalize them.
+            // Without this, queries like "Rashid Khalidi" or "Vintage Books"
+            // wouldn't hit any books at all — books no longer carry `author`
+            // or `byline`, so the old field list was indexing empty strings.
+            fields: [
+                'title',
+                'subtitle',
+                'authors',        // book array, joined in extractField
+                'author',         // legacy non-book string
+                'byline',         // legacy non-book subtitle-ish
+                'year',
+                'publication_date',
+                'publisher',
+                'tags',           // array of topic tags (per-book)
+                'isbn',           // exact-ish: "9780375..." should match
+                'language',
+                'section',
+                'subsection',
+                'description',
+            ],
             // Fields we want to read back without re-fetching from the catalog.
-            // `kind` is included so boostDocument can read it during scoring.
-            storeFields: ['title', 'tab', 'subtab', 'section', 'subsection', 'description', 'starred', 'anchor', 'url', 'kind', 'author', 'year'],
-            // MiniSearch tokenizes strings — `year` is stored as a number in
-            // the catalog, so coerce non-id fields to string here so they're
-            // indexed properly. The id field MUST be returned as-is so the
-            // numeric ids match the keys in entryById; stringifying it here
-            // silently broke keyword search (every entryById.get() missed).
+            // `kind` is included so boostDocument can read it during scoring;
+            // the book-only fields (authors/subtitle/publisher/cover_image/…)
+            // let renderResults show a richer byline without a catalog round-trip.
+            storeFields: [
+                'title',
+                'tab',
+                'subtab',
+                'section',
+                'subsection',
+                'description',
+                'starred',
+                'anchor',
+                'url',
+                'kind',
+                'format',
+                'author',
+                'authors',
+                'subtitle',
+                'year',
+                'publication_date',
+                'publisher',
+                'page_count',
+                'language',
+                'tags',
+                'rating',
+                'isbn',
+                'cover_image',
+            ],
+            // MiniSearch tokenizes strings — coerce arrays/numbers to space-
+            // joined strings so all the tokens become searchable. The id
+            // field MUST be returned as-is so the numeric ids match the keys
+            // in entryById; stringifying it here silently broke keyword
+            // search (every entryById.get() missed).
             extractField: (doc, field) => {
                 if (field === 'id') return doc.id;
                 const v = doc[field];
-                return v == null ? '' : String(v);
+                if (v == null) return '';
+                if (Array.isArray(v)) return v.filter(Boolean).join(' ');
+                return String(v);
             },
             searchOptions: {
                 // Author gets the same weight as title so a query like
                 // "Edward Said" surfaces books by him, not just books that
-                // happen to mention him in the title.
-                boost: { title: 3, author: 3, byline: 2.5, subsection: 2, section: 1.5 },
+                // happen to mention him in the title. `authors` (the v2
+                // book field) gets the same treatment; `isbn` is boosted
+                // hard because an exact ISBN search is unambiguous.
+                boost: {
+                    title: 3,
+                    authors: 3,
+                    author: 3,
+                    isbn: 4,
+                    subtitle: 2.5,
+                    byline: 2.5,
+                    tags: 2.2,
+                    subsection: 2,
+                    publisher: 1.8,
+                    section: 1.5,
+                    publication_date: 1.2,
+                },
                 prefix: true,        // "khal" matches "Khalidi"
                 fuzzy: 0.18,         // typo tolerance, ~1 edit in 6 chars
                 combineWith: 'AND',  // multi-word queries must all match
@@ -270,6 +330,36 @@
         return base;
     }
 
+    // Normalize the "who wrote this" string for display + AI. Books-v2 use
+    // `authors` (array, may be multi); legacy non-book entries use `author`
+    // (string). Returns a comma-joined string with "and" before the last
+    // name when there are ≥2 authors, or '' if no author info is present.
+    function authorDisplay(entry) {
+        if (!entry) return '';
+        if (Array.isArray(entry.authors) && entry.authors.length > 0) {
+            const list = entry.authors.filter(Boolean);
+            if (list.length === 0) return '';
+            if (list.length === 1) return list[0];
+            if (list.length === 2) return `${list[0]} and ${list[1]}`;
+            return `${list.slice(0, -1).join(', ')}, and ${list[list.length - 1]}`;
+        }
+        return entry.author || '';
+    }
+
+    // Display year for an entry. Books store an editorial `year` (which wins)
+    // and an OL-derived `publication_date` ("YYYY-MM-DD" or "YYYY"). Non-book
+    // entries just use `year`. We surface a 4-digit year either way.
+    function yearDisplay(entry) {
+        if (!entry) return '';
+        if (entry.year) return String(entry.year);
+        const pd = entry.publication_date;
+        if (typeof pd === 'string') {
+            const m = pd.match(/\d{4}/);
+            if (m) return m[0];
+        }
+        return '';
+    }
+
     // Render a list of catalog entries to the results panel. `terms` is the
     // user's split query (used for highlighting). `whyById` is an optional
     // map from entry id → one-line "why this was picked" string used by the
@@ -291,15 +381,28 @@
                 `<span>${escapeHtml(tabLabel(e))}</span>`,
                 e.section ? `<span class="sr-section">· ${escapeHtml(e.section)}</span>` : '',
             ].filter(Boolean).join(' ');
-            // Author + year live on their own line directly under the title.
-            // Either or both may be missing — only render the line when we
+            // Author + year + publisher live on their own line directly under
+            // the title. Any may be missing — only render the line when we
             // have at least one piece, joined by " · " for visual rhythm.
+            // For v2 books, `authors` is an array (joined via authorDisplay);
+            // legacy non-book entries fall back to the single `author` string.
+            // Publisher is only shown for books since it's noise on other tabs.
+            const who = authorDisplay(e);
+            const yr = yearDisplay(e);
+            const pub = e.tab === 'books' && e.publisher ? e.publisher : '';
             const bylineBits = [
-                e.author ? highlight(e.author, terms) : '',
-                e.year ? highlight(String(e.year), terms) : '',
+                who ? highlight(who, terms) : '',
+                yr ? highlight(yr, terms) : '',
+                pub ? highlight(pub, terms) : '',
             ].filter(Boolean);
             const bylineRow = bylineBits.length
                 ? `<div class="sr-byline">${bylineBits.join(' · ')}</div>`
+                : '';
+            // Subtitle, when present, gets its own dim line under the byline.
+            // Mostly book-specific (only ~8 populated today) but harmless on
+            // any entry that ends up carrying one.
+            const subtitleRow = e.subtitle
+                ? `<div class="sr-subtitle">${highlight(e.subtitle, terms)}</div>`
                 : '';
             const why = whyById && whyById.get(e.id);
             return (
@@ -308,6 +411,7 @@
                 `<div class="sr-title">${highlight(e.title, terms)}</div>` +
                 `<div class="sr-meta">${meta}</div>` +
                 bylineRow +
+                subtitleRow +
                 (why
                     ? `<div class="sr-why">${escapeHtml(why)}</div>`
                     : e.description
@@ -424,21 +528,62 @@
 
     function compactForAI(e) {
         // Mirrors worker.js compactCandidate exactly so the model sees a
-        // consistent shape regardless of which endpoint we hit.
+        // consistent shape regardless of which endpoint we hit. IF YOU
+        // ADD OR REMOVE A FIELD, UPDATE BOTH.
         //
-        // Author and year are included even though the keyword pre-filter
+        // Author/year/etc. are included even though the keyword pre-filter
         // already used them — Thaura needs to see them on each candidate
-        // to answer queries like "a book by Karl Sabbagh" or "something
-        // from 2024". Without them in the payload the model has to guess
-        // from the title/description alone, which causes timeouts (the
-        // model thrashes) and hallucinations ("we don't have any books
-        // by X"). They're tiny strings so the budget impact is trivial.
+        // to answer queries like "a book by Karl Sabbagh", "Vintage Books
+        // titles", or "something from 2024". Without them in the payload
+        // the model has to guess from the title/description alone, which
+        // causes timeouts (the model thrashes) and hallucinations like
+        // "we don't have any books by X". They're tiny strings so the
+        // budget impact is trivial.
+        //
+        // We normalize the two shapes (v2 books vs. legacy non-books) into
+        // one schema for the model:
+        //   - `authors` (array) is the canonical author field; legacy
+        //     `author` (string) gets wrapped to `[author]`.
+        //   - `subtitle` covers both v2 `subtitle` and legacy `byline`.
+        // Books-only fields (publisher, publication_date, page_count,
+        // language, tags, rating) are emitted only when present so the
+        // payload doesn't balloon on non-book entries.
         const out = { id: e.id, title: e.title, tab: e.tab };
         if (e.subtab) out.subtab = e.subtab;
         if (e.section) out.section = e.section;
+        if (e.subsection) out.subsection = e.subsection;
+        if (e.format && e.format !== 'other') out.format = e.format;
         if (e.starred) out.starred = true;
-        if (e.author) out.author = e.author;
-        if (e.year) out.year = e.year;
+
+        // Authors → always an array in the AI payload.
+        if (Array.isArray(e.authors) && e.authors.length > 0) {
+            out.authors = e.authors.filter(Boolean);
+        } else if (e.author) {
+            out.authors = [e.author];
+        }
+
+        // Subtitle / byline → one canonical key.
+        const sub = e.subtitle || e.byline;
+        if (sub) out.subtitle = sub;
+
+        // Year: prefer editorial `year`; fall back to publication_date's year.
+        const yr = yearDisplay(e);
+        if (yr) out.year = Number(yr) || yr;
+
+        // Books-only enrichment signals. Send raw publication_date too when
+        // it's more specific than the year alone (helps "recent" queries).
+        if (e.publisher) out.publisher = e.publisher;
+        if (e.publication_date && e.publication_date !== String(e.year)) {
+            out.publication_date = e.publication_date;
+        }
+        if (Number.isFinite(e.page_count)) out.page_count = e.page_count;
+        if (e.language && e.language !== 'eng') out.language = e.language;
+        if (Array.isArray(e.tags) && e.tags.length > 0) {
+            out.tags = e.tags.slice(0, 8); // cap to keep prompts tight
+        }
+        if (Number.isFinite(e.rating)) out.rating = e.rating;
+        if (e.kind === 'list') out.kind = 'list';
+
         if (e.description) {
             out.description = e.description.length > 200
                 ? e.description.slice(0, 200).replace(/\s\S*$/, '') + '…'
