@@ -58,6 +58,10 @@ class TabManager {
     }
 
     init() {
+        // Build the section index BEFORE the first switchTab/generateOutline so
+        // those reuse the ids we assign here (rather than assigning their own).
+        this.buildSectionIndex();
+
         // Create overlay for mobile bottom sheet
         this.overlay = document.createElement('div');
         this.overlay.className = 'sidebar-overlay';
@@ -109,7 +113,7 @@ class TabManager {
         // on "/" doesn't rewrite to "/#home".
         const parsed = this.parseHash();
         const initialTab = parsed.tab || 'home';
-        this.switchTab(initialTab, { updateHash: false, subtab: parsed.subtab });
+        this.switchTab(initialTab, { updateHash: false, subtab: parsed.subtab, section: parsed.section });
 
         // If the user landed on an aliased or non-canonical hash (e.g.
         // #supplements/globalsolidarity), silently rewrite the address bar to
@@ -147,7 +151,7 @@ class TabManager {
 
     }
 
-    switchTab(tabName, { updateHash = true, subtab = null } = {}) {
+    switchTab(tabName, { updateHash = true, subtab = null, section = null } = {}) {
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
@@ -180,8 +184,13 @@ class TabManager {
         // Update outline (scoped to active subtab if one exists)
         this.generateOutline();
 
-        // Scroll to top
-        this.contentArea.scrollTop = 0;
+        // Scroll to top — unless we're deep-linking to a section, in which case
+        // jump to that section instead of resetting to the top of the tab.
+        if (section) {
+            this.scrollToSection(section);
+        } else {
+            this.contentArea.scrollTop = 0;
+        }
 
         // Hide sidebar on mobile
         this.hideSidebar();
@@ -224,14 +233,104 @@ class TabManager {
         this.activeSubtab = subtabName;
     }
 
-    // Parse window.location.hash into { tab, subtab }.
-    // Handles flat ("books"), nested ("supplements/genocide"), and bare
+    // Walk every heading across all tabs once, assign a stable id to any that
+    // lack one (slugified from the heading text, de-duplicated globally), and
+    // record which tab/subtab each id lives in. This is what powers
+    // section-level deep links like palestinelist.com/#techforpalestine — with
+    // no manually-maintained registry. New sections are picked up on the next
+    // load automatically; hand-authored ids (like #techforpalestine) are kept
+    // verbatim. Runs once in init(), before the first generateOutline(), so the
+    // outline reuses these exact ids. Cost is ~one querySelectorAll over the
+    // page plus a slug per heading — negligible next to parsing the document.
+    buildSectionIndex() {
+        this.sectionIndex = new Map();      // id -> { tab, subtab }
+        const used = new Set();
+
+        // URL-safe slug: collapse any run of non-alphanumerics (spaces, emoji,
+        // punctuation like | ( ) & and especially "/") to a single hyphen, so
+        // the id survives intact in a shared URL fragment. Heading text on this
+        // site routinely contains those characters, and a raw "/" in particular
+        // would otherwise be misread by parseHash as a tab/subtab separator.
+        // Because this pass assigns ids to EVERY heading before the first
+        // generateOutline(), the outline reuses these exact ids (it only
+        // computes its own when an id is missing), so the two never diverge.
+        const slug = (text) => {
+            const body = text.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')   // non-alphanumeric runs -> hyphen
+                .replace(/^-+|-+$/g, '')       // trim leading/trailing hyphens
+                .substring(0, 50)
+                .replace(/-+$/, '');           // re-trim if cut mid-hyphen
+            return `heading-${body}`;
+        };
+
+        const register = (el, tab, subtab) => {
+            let id = el.id;
+            if (id) {
+                // Pre-existing (often hand-authored) id — keep it, but warn on
+                // collisions so duplicate manual anchors get caught in dev.
+                if (used.has(id)) {
+                    console.warn(`[sections] duplicate id "${id}" — deep links to it are ambiguous`);
+                }
+            } else {
+                const base = slug(el.textContent.trim());
+                if (!base || base === 'heading-') return;   // skip empty headings
+                id = base;
+                let n = 2;
+                while (used.has(id)) id = `${base}-${n++}`;  // guarantee uniqueness
+                el.id = id;
+            }
+            used.add(id);
+            if (!this.sectionIndex.has(id)) {
+                this.sectionIndex.set(id, { tab, subtab });
+            }
+        };
+
+        document.querySelectorAll('.tab-content').forEach(tabEl => {
+            const tab = tabEl.id.replace(/^tab-/, '');
+            if (!tab) return;
+            // Subtab-scoped headings first, so each carries its owning subtab.
+            tabEl.querySelectorAll('.subtab-content').forEach(subEl => {
+                const subtab = subEl.id.replace(/^subtab-/, '') || null;
+                subEl.querySelectorAll('h2, h3, h4, h5, h6')
+                    .forEach(h => register(h, tab, subtab));
+            });
+            // Then headings that live directly on the tab (not in any subtab).
+            tabEl.querySelectorAll('h2, h3, h4, h5, h6').forEach(h => {
+                if (h.closest('.subtab-content')) return;
+                register(h, tab, null);
+            });
+        });
+    }
+
+    // Scroll the content area to a section id. Deferred a frame so it runs
+    // after switchTab has flipped the target tab to display:block and it has
+    // layout. Uses the same offset math as updateActiveOutlineItem() for a
+    // consistent landing position under the sticky header.
+    scrollToSection(id) {
+        requestAnimationFrame(() => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const top = el.offsetTop - this.contentArea.offsetTop - 20;
+            this.contentArea.scrollTop = Math.max(0, top);
+            this.updateActiveOutlineItem();
+        });
+    }
+
+    // decodeURIComponent that never throws on a malformed fragment.
+    decodeHashPart(s) {
+        try { return decodeURIComponent(s); } catch (e) { return s; }
+    }
+
+    // Parse window.location.hash into { tab, subtab, section }.
+    // Handles flat ("books"), nested ("supplements/genocide"), bare
     // tabs-with-subtabs ("supplements", which resolves to the default subtab
-    // — we leave subtab=null here and let switchTab pick the default).
-    // Returns { tab: null, subtab: null } for empty or unknown hashes.
+    // — we leave subtab=null here and let switchTab pick the default), and
+    // section ids ("techforpalestine"), which resolve to their owning
+    // tab/subtab plus the section to scroll to.
+    // Returns { tab: null, subtab: null, section: null } for empty/unknown hashes.
     parseHash() {
         const raw = (window.location.hash || '').replace(/^#/, '');
-        if (!raw) return { tab: null, subtab: null };
+        if (!raw) return { tab: null, subtab: null, section: null };
 
         const slash = raw.indexOf('/');
         if (slash !== -1) {
@@ -245,13 +344,24 @@ class TabManager {
                 sub = aliases[sub];
             }
             if (tab && subs && subs.includes(sub)) {
-                return { tab, subtab: sub };
+                return { tab, subtab: sub, section: null };
             }
             // Nested form but unrecognized — fall through to flat lookup of head.
-            return { tab: HASH_TO_TAB[head] || null, subtab: null };
+            return { tab: HASH_TO_TAB[head] || null, subtab: null, section: null };
         }
 
-        return { tab: HASH_TO_TAB[raw] || null, subtab: null };
+        // Known tab hash (e.g. #books, #misc).
+        const flatTab = HASH_TO_TAB[raw];
+        if (flatTab) return { tab: flatTab, subtab: null, section: null };
+
+        // Otherwise: is it a section id? Resolve to its owning tab/subtab and
+        // carry the section so the caller can scroll to it after switching.
+        // Decode first so an encoded fragment matches the literal id we stored.
+        const sectionId = this.decodeHashPart(raw);
+        const sec = this.sectionIndex && this.sectionIndex.get(sectionId);
+        if (sec) return { tab: sec.tab, subtab: sec.subtab || null, section: sectionId };
+
+        return { tab: null, subtab: null, section: null };
     }
 
     syncTabFromHash() {
@@ -259,9 +369,13 @@ class TabManager {
         if (!parsed.tab) return;
         if (parsed.tab !== this.activeTab) {
             // Don't re-push the hash we just read from.
-            this.switchTab(parsed.tab, { updateHash: false, subtab: parsed.subtab });
+            this.switchTab(parsed.tab, { updateHash: false, subtab: parsed.subtab, section: parsed.section });
         } else if (parsed.subtab && parsed.subtab !== this.activeSubtab) {
             this.switchSubtab(parsed.subtab, { updateHash: false });
+            if (parsed.section) this.scrollToSection(parsed.section);
+        } else if (parsed.section) {
+            // Already on the right tab/subtab — just scroll to the section.
+            this.scrollToSection(parsed.section);
         }
     }
 
@@ -295,6 +409,10 @@ class TabManager {
         // Don't rewrite modal hashes (owned by js/books.js); landing on
         // #book/<isbn> etc. must preserve the full fragment.
         if (MODAL_HASH_RE.test(window.location.hash)) return;
+        // Don't rewrite a section deep-link (e.g. #techforpalestine) to the bare
+        // tab hash — the section fragment must survive so the link keeps working.
+        const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
+        if (this.sectionIndex && this.sectionIndex.has(raw)) return;
         const canonical = this.canonicalHash();
         if (canonical && window.location.hash !== canonical) {
             history.replaceState(null, '', canonical);
@@ -371,6 +489,18 @@ class TabManager {
                 const target = document.getElementById(item.id);
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth' });
+                    // Reflect the section in the address bar so the URL is
+                    // copyable and back/forward steps through visited sections.
+                    // pushState (rather than assigning location.hash) avoids the
+                    // browser's synchronous anchor jump fighting the smooth
+                    // scroll above, and avoids a redundant hashchange → re-scroll;
+                    // traversal is still handled by the existing hashchange
+                    // listener. Guard against duplicate history entries on repeat
+                    // clicks of the same item.
+                    const newHash = `#${item.id}`;
+                    if (window.location.hash !== newHash) {
+                        history.pushState(null, '', newHash);
+                    }
                     this.updateActiveOutlineItem();
                 }
             });
