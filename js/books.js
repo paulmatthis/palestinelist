@@ -29,6 +29,12 @@
   let byPublisherSlug = new Map();
   let modalRoot = null;
   let baseHashBeforeModal = '#books'; // restored when modal closes
+  // Did opening the current modal push a history entry? If so, closing it can
+  // simply pop that entry (history.back) to return to exactly where the user
+  // was — same tab, same scroll/section — in one step. If not (i.e. the page
+  // was loaded cold on a modal hash), there's nothing to pop, so we swap the
+  // hash out instead.
+  let modalPushedHistory = false;
 
   function slugify(s) {
     return String(s || '')
@@ -277,13 +283,44 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function closeModal({ restoreHash = true } = {}) {
+  function closeModal() {
     if (!modalRoot) return;
+    const wasOpen = modalRoot.classList.contains('is-open');
     modalRoot.classList.remove('is-open');
     document.body.style.overflow = '';
-    if (restoreHash && MODAL_HASH_PATTERN.test(window.location.hash)) {
-      history.pushState(null, '', baseHashBeforeModal || '#books');
+    if (!wasOpen) return;
+
+    // If the address bar still shows a modal hash, the user is closing via the
+    // ×/Esc/overlay (not via back/forward, which would already have changed the
+    // hash). Undo the navigation that opened the modal:
+    if (MODAL_HASH_PATTERN.test(window.location.hash)) {
+      if (modalPushedHistory) {
+        // Pop the entry we pushed → returns to the originating tab/section in a
+        // single step, and lets the tab manager re-sync from the restored hash.
+        modalPushedHistory = false;
+        history.back();
+      } else {
+        // Cold deep-link: no pushed entry to pop. Replace the modal hash with a
+        // sensible base so we don't add a junk history entry.
+        history.replaceState(null, '', baseHashBeforeModal || '#books');
+      }
+    } else {
+      // Closed by a back/forward navigation; history is already correct.
+      modalPushedHistory = false;
     }
+  }
+
+  // Visually dismiss the modal WITHOUT touching history. Used when the user
+  // navigates to another tab/subtab while a modal is open: tab switches go
+  // through the tab manager's pushState (not a hashchange), so the normal
+  // close paths don't fire, and the modal's full-screen overlay would
+  // otherwise sit on top of the newly-shown tab and swallow every click. The
+  // tab button's own handler updates the URL, so we must not also rewrite it.
+  function dismissModal() {
+    if (!modalRoot || !modalRoot.classList.contains('is-open')) return;
+    modalRoot.classList.remove('is-open');
+    document.body.style.overflow = '';
+    modalPushedHistory = false;
   }
 
   // ---------- Hash routing ------------------------------------------------
@@ -294,25 +331,21 @@
     return { type: m[1], key: decodeURIComponent(m[2]) };
   }
 
-  function ensureBooksTab() {
-    // If we're not already on the books tab, switch to it.
-    const tm = window.__tabManager;
-    if (tm && tm.activeTab !== 'books') {
-      baseHashBeforeModal = '#books';
-      tm.switchTab('books', { updateHash: false });
-    }
-  }
-
   function applyHash() {
     const parsed = parseModalHash(window.location.hash);
     if (!parsed) {
       // No modal hash → close any open modal (without rewriting the URL)
       if (modalRoot && modalRoot.classList.contains('is-open')) {
-        closeModal({ restoreHash: false });
+        closeModal();
       }
       return;
     }
-    ensureBooksTab();
+    // No tab switching here: the modal is a fixed, full-screen overlay, so it
+    // can appear over whatever tab the link was clicked on (e.g. a book listed
+    // under Supplements → Global Liberation stays there). For a cold deep-link
+    // to a modal hash, the tab manager already lands the user on the Books tab
+    // (HASH_TO_TAB maps book/author/publisher → books), so there's a sensible
+    // tab behind the overlay without us forcing one here.
     if (parsed.type === 'book') {
       const b = byIsbn.get(parsed.key);
       if (!b) {
@@ -344,12 +377,15 @@
   }
 
   function openHash(newHash) {
-    // Record where we came from so closing can restore it
+    // Record where we came from so closing can restore it. Only capture when
+    // we're not already on a modal hash, so navigating modal→modal keeps the
+    // original (non-modal) origin as the close target.
     if (!MODAL_HASH_PATTERN.test(window.location.hash)) {
       baseHashBeforeModal = window.location.hash || '#books';
     }
     if (window.location.hash !== newHash) {
       history.pushState(null, '', newHash);
+      modalPushedHistory = true;
     }
     applyHash();
   }
@@ -360,6 +396,17 @@
     document.addEventListener('click', (e) => {
       // Modifier clicks (open in new tab) → let the browser handle natively.
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
+
+      // Navigating to another tab/subtab while a modal is open? Dismiss it so
+      // its overlay can't block the destination tab. The tab manager (main.js)
+      // handles the actual switch + URL on this same click; we only clear the
+      // overlay. This runs in the document-level bubble phase, after the tab
+      // button's own handler, so the URL is already correct by now.
+      if (e.target.closest('.tab-button, .subtab-button')) {
+        dismissModal();
+        return;
+      }
+
       const a = e.target.closest('a');
       if (!a) return;
 
@@ -386,22 +433,26 @@
           return;
         }
       }
-      // Author link
+      // Author link. Always prevent the default navigation: the href is an
+      // internal "#author/<slug>" that the tab manager would otherwise route to
+      // the Books tab. Open the modal only when we have data for that author;
+      // if not (e.g. a book that isn't in the dataset, like an older manual
+      // entry), do nothing rather than jumping the user to an empty Books tab.
       if (a.classList.contains('book-author-link')) {
+        e.preventDefault();
         const name = a.dataset.author || a.textContent.trim();
         const slug = slugify(name);
         if (byAuthorSlug.has(slug)) {
-          e.preventDefault();
           openHash(`#author/${encodeURIComponent(slug)}`);
         }
         return;
       }
-      // Publisher link
+      // Publisher link — same treatment as author links.
       if (a.classList.contains('book-publisher-link')) {
+        e.preventDefault();
         const name = a.dataset.publisher || a.textContent.trim();
         const slug = slugify(name);
         if (byPublisherSlug.has(slug)) {
-          e.preventDefault();
           openHash(`#publisher/${encodeURIComponent(slug)}`);
         }
         return;

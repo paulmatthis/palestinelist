@@ -28456,7 +28456,8 @@
       "anchor": "h.83lzxe6x4bjy",
       "starred": true,
       "kind": "item",
-      "format": "book"
+      "format": "book",
+      "subsection": "Syria"
     },
     {
       "id": 1789,
@@ -31168,6 +31169,64 @@
       "priority": null,
       "tags": [],
       "url": "https://bookshop.org/a/104178/9781623715687",
+      "enrichment": null
+    },
+    {
+      "id": 2023,
+      "tab": "books",
+      "kind": "item",
+      "format": "book",
+      "anchor": "h.p4tgoyn8gtpq",
+      "isbn": "9781668062173",
+      "title": "Days of Love and Rage: A Story of Ordinary People Forging a Revolution",
+      "subtitle": null,
+      "authors": [
+        "Anand Gopal"
+      ],
+      "publisher": null,
+      "publication_date": null,
+      "year": 2026,
+      "page_count": null,
+      "language": null,
+      "description": null,
+      "cover_image": "https://covers.openlibrary.org/b/isbn/9781668062173-L.jpg?default=false",
+      "section": "Global Liberation",
+      "subsection": "Syria",
+      "runner_up_for": null,
+      "starred": true,
+      "rating": null,
+      "priority": null,
+      "tags": [],
+      "url": "https://bookshop.org/a/104178/9781668062173",
+      "enrichment": null
+    },
+    {
+      "id": 2024,
+      "tab": "books",
+      "kind": "item",
+      "format": "book",
+      "anchor": null,
+      "isbn": "9780316556736",
+      "title": "Assad or We Burn the Country: How One Family's Lust for Power Destroyed Syria",
+      "subtitle": null,
+      "authors": [
+        "Sam Dagher"
+      ],
+      "publisher": null,
+      "publication_date": null,
+      "year": 2020,
+      "page_count": null,
+      "language": null,
+      "description": null,
+      "cover_image": "https://covers.openlibrary.org/b/isbn/9780316556736-L.jpg?default=false",
+      "section": "Global Liberation",
+      "subsection": "Syria",
+      "runner_up_for": null,
+      "starred": true,
+      "rating": null,
+      "priority": null,
+      "tags": [],
+      "url": "https://bookshop.org/a/104178/9780316556736",
       "enrichment": null
     }
   ],

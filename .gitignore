@@ -32,6 +32,9 @@ search-index.json.backup
 # Local-only session handoff notes for Cowork
 HANDOFF.md
 
+# Local agent settings (Claude Code / Cowork)
+.claude/
+
 # Local-only editor app
 editor.html
 
