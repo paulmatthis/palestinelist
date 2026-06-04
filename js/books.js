@@ -377,15 +377,22 @@
   }
 
   function openHash(newHash) {
-    // Record where we came from so closing can restore it. Only capture when
-    // we're not already on a modal hash, so navigating modal→modal keeps the
-    // original (non-modal) origin as the close target.
-    if (!MODAL_HASH_PATTERN.test(window.location.hash)) {
+    const onModalHash = MODAL_HASH_PATTERN.test(window.location.hash);
+    if (!onModalHash) {
+      // Opening a modal from a normal page view: remember where to return to,
+      // and push ONE history entry for the whole modal session.
       baseHashBeforeModal = window.location.hash || '#books';
-    }
-    if (window.location.hash !== newHash) {
-      history.pushState(null, '', newHash);
-      modalPushedHistory = true;
+      if (window.location.hash !== newHash) {
+        history.pushState(null, '', newHash);
+        modalPushedHistory = true;
+      }
+    } else if (window.location.hash !== newHash) {
+      // Navigating between modal views (e.g. book → author) while the modal is
+      // already open: REPLACE rather than push, so the whole modal session
+      // stays a single history entry. That keeps closing simple — one × (or
+      // one Back) returns to where the modal was opened, no matter how many
+      // author/title links were followed inside it.
+      history.replaceState(null, '', newHash);
     }
     applyHash();
   }
@@ -409,6 +416,22 @@
 
       const a = e.target.closest('a');
       if (!a) return;
+
+      // Links INSIDE the open modal that point at another modal view
+      // (#book/#author/#publisher) — e.g. clicking an author's name in a book's
+      // detail modal, or a title in an author's "Books by …" list. Route them
+      // through openHash so the modal swaps content in place. Without this they
+      // do a bare hash navigation, which the tab manager resolves by switching
+      // to the Books tab (jarring when the modal was opened from, say, a
+      // Supplements section) and leaves a stray history entry behind.
+      if (modalRoot && modalRoot.contains(a)) {
+        const mhref = a.getAttribute('href') || '';
+        if (MODAL_HASH_PATTERN.test(mhref)) {
+          e.preventDefault();
+          openHash(mhref);
+          return;
+        }
+      }
 
       // Book title link with explicit data-isbn (the renderer's default form).
       const isbn = a.dataset.isbn;
@@ -457,12 +480,8 @@
         }
         return;
       }
-      // In-modal book link → re-route through #book/<isbn>
-      const inModalIsbn = a.dataset.isbn;
-      if (modalRoot && modalRoot.contains(a) && inModalIsbn && byIsbn.has(inModalIsbn)) {
-        e.preventDefault();
-        openHash(`#book/${encodeURIComponent(inModalIsbn)}`);
-      }
+      // (In-modal links to other modal views are handled at the top of this
+      // listener — see the modalRoot.contains(a) block above.)
     });
 
     // Esc closes modal
