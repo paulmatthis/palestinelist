@@ -441,14 +441,18 @@
         return;
       }
 
-      // Permissive fallback: ANY <a> inside the books tab whose href is a
-      // bookshop.org/a/104178/<isbn-13> URL opens the modal if that ISBN is
-      // known. This lets hand-authored Big Five links (and any other bare
-      // bookshop links you paste in) open modals without remembering to set
-      // class="book-title-link" data-isbn="…" each time.
+      // Permissive fallback: ANY <a> whose href is a bookshop.org/a/104178/
+      // <isbn-13> URL opens the modal if that ISBN is known — ANYWHERE on the
+      // site, not just the Books tab. This is the durable fix for "links need a
+      // class": a Bookshop link pasted into a Supplements section (or anywhere)
+      // opens its modal without remembering class="book-title-link"
+      // data-isbn="…". Unknown ISBNs fall through to normal navigation.
+      //
+      // Exclude links inside the modal itself — the "View on Bookshop.org" buy
+      // button is a genuine outbound link and must navigate normally (the
+      // in-modal #book/#author/#publisher links were already handled above).
       const href = a.getAttribute('href') || '';
-      const booksTab = a.closest('#tab-books');
-      if (booksTab) {
+      if (!(modalRoot && modalRoot.contains(a))) {
         const m = href.match(/bookshop\.org\/a\/104178\/(97[89]\d{10})/);
         if (m && byIsbn.has(m[1])) {
           e.preventDefault();
