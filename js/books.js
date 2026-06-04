@@ -451,9 +451,13 @@
       // Exclude links inside the modal itself — the "View on Bookshop.org" buy
       // button is a genuine outbound link and must navigate normally (the
       // in-modal #book/#author/#publisher links were already handled above).
+      // Match the ISBN-13 anywhere in a bookshop.org URL — handles both the
+      // short affiliate form (…/a/104178/<isbn>) and the longer product form
+      // (…/p/books/<slug>/<isbn>?ean=<isbn>). We only act on it when the ISBN
+      // is a known book, so a stray number can't false-trigger.
       const href = a.getAttribute('href') || '';
       if (!(modalRoot && modalRoot.contains(a))) {
-        const m = href.match(/bookshop\.org\/a\/104178\/(97[89]\d{10})/);
+        const m = href.match(/bookshop\.org\/.*?(97[89]\d{10})/);
         if (m && byIsbn.has(m[1])) {
           e.preventDefault();
           openHash(`#book/${encodeURIComponent(m[1])}`);
