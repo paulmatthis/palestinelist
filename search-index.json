@@ -32665,7 +32665,7 @@
       "year": 2026,
       "page_count": null,
       "language": null,
-      "description": null,
+      "description": "The Anti-Defamation League (ADL) is a major US political organization, yet its politics have gone largely unexamined. While the ADL is often portrayed as a defender against antisemitism and racism, its history shows that it is better understood as a proponent of the racial state and US empire. From \"correcting\" the embarrassing racial difference of immigrant Jews to policing the leftist politics of Black, Arab, and Jewish groups, the ADL pursued a conservative version of civil rights paired with aggressive anti-communism. Even as it became an authority on white nationalism in the 1970s, the ADL joined with the emerging anti-left, anti-Arab, and pro-Western neoconservative movement.\n\nThis history presaged the ADL's work, from the 1980s to the present, in developing the hate crimes framework as a pro-state policing project, which soon merged with the \"War on Terror,\" the \"antisemitism scare,\" and anti-Palestinian racism. The Anti-Defamation League and the Racial State presents the ADL's history through its conflicts with social justice movements, illuminating the ADL's outsize role in shaping the ideas about race and rights that have underwritten US empire.",
       "cover_image": "https://covers.openlibrary.org/b/isbn/9780520410442-L.jpg?default=false",
       "section": "Non-Fiction",
       "subsection": "More Jewish Authors",
@@ -32675,7 +32675,10 @@
       "priority": null,
       "tags": [],
       "url": "https://www.ucpress.edu/books/the-anti-defamation-league-and-the-racial-state/hardcover",
-      "enrichment": null
+      "enrichment": {
+        "source": "openlibrary",
+        "fetched_at": "2026-07-10T16:13:07.854Z"
+      }
     }
   ],
   "schema_version": 2
