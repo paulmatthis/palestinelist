@@ -32647,6 +32647,35 @@
       "tags": [],
       "url": "https://bookshop.org/a/104178/9780805065879",
       "enrichment": null
+    },
+    {
+      "id": 2076,
+      "tab": "books",
+      "kind": "item",
+      "format": "book",
+      "anchor": "subsection-more-jewish-authors",
+      "isbn": "9780520410442",
+      "title": "The Anti-Defamation League and the Racial State",
+      "subtitle": null,
+      "authors": [
+        "Emmaia Gelman"
+      ],
+      "publisher": null,
+      "publication_date": null,
+      "year": 2026,
+      "page_count": null,
+      "language": null,
+      "description": null,
+      "cover_image": "https://covers.openlibrary.org/b/isbn/9780520410442-L.jpg?default=false",
+      "section": "More books specifically by or about Jews (by request)",
+      "subsection": null,
+      "runner_up_for": null,
+      "starred": false,
+      "rating": null,
+      "priority": null,
+      "tags": [],
+      "url": "https://www.ucpress.edu/books/the-anti-defamation-league-and-the-racial-state/hardcover",
+      "enrichment": null
     }
   ],
   "schema_version": 2
