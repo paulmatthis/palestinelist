@@ -32679,6 +32679,36 @@
         "source": "openlibrary",
         "fetched_at": "2026-07-10T16:13:07.854Z"
       }
+    },
+    {
+      "id": 2077,
+      "tab": "books",
+      "kind": "item",
+      "format": "book",
+      "anchor": "subsection-one-state-solution",
+      "isbn": "9780863569418",
+      "title": "After Zionism: One State for Israel and Palestine",
+      "subtitle": null,
+      "authors": [
+        "Antony Loewenstein",
+        "Ahmed Moor"
+      ],
+      "publisher": null,
+      "publication_date": null,
+      "year": 2024,
+      "page_count": null,
+      "language": null,
+      "description": null,
+      "cover_image": "https://covers.openlibrary.org/b/isbn/9780863569418-L.jpg?default=false",
+      "section": "Non-Fiction",
+      "subsection": "One-State Solution",
+      "runner_up_for": null,
+      "starred": false,
+      "rating": null,
+      "priority": null,
+      "tags": [],
+      "url": "https://bookshop.org/a/104178/9780863569418",
+      "enrichment": null
     }
   ],
   "schema_version": 2
