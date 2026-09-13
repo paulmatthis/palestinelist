@@ -786,6 +786,45 @@ class Lightbox {
     }
 }
 
+// Opens every external link (any http/https href whose hostname differs from
+// this page's) in a new tab, including links added later by dynamic content
+// (e.g. the book/author/publisher modals in js/books.js). Runs once over the
+// existing DOM, then watches for additions via MutationObserver so nothing
+// needs to opt in by hand. rel="noopener" stops the new tab from reaching
+// back into this page through window.opener (reverse tabnabbing).
+class ExternalLinks {
+    constructor() {
+        document.querySelectorAll('a[href]').forEach(a => this.mark(a));
+
+        const observer = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                for (const node of m.addedNodes) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                    if (node.matches('a[href]')) this.mark(node);
+                    node.querySelectorAll?.('a[href]').forEach(a => this.mark(a));
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    mark(a) {
+        let url;
+        try {
+            url = new URL(a.href, location.href);
+        } catch (e) {
+            return; // unparseable href, leave it alone
+        }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+        if (url.hostname === location.hostname) return;
+
+        a.target = '_blank';
+        const rel = new Set((a.getAttribute('rel') || '').split(/\s+/).filter(Boolean));
+        rel.add('noopener');
+        a.setAttribute('rel', [...rel].join(' '));
+    }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Expose the TabManager instance so other scripts (e.g. js/search.js)
@@ -793,6 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // the URL-hash and outline plumbing.
     window.__tabManager = new TabManager();
     new Lightbox();
+    new ExternalLinks();
 });
 
 // Handle window resize

@@ -445,16 +445,21 @@ body.dark-mode #subtab-timeline figcaption {
 .content-area a {
     color: var(--accent-green);
     text-decoration: none;
-    transition: all 0.2s ease;
+    /* No transition on color: browsers resolve :visited through an isolated,
+       privacy-throttled style pass (to prevent history-sniffing), separate
+       from normal cascade resolution. Animating color across a :visited/
+       :hover change exposes that recalculation as a visible flash through
+       the plain, unvisited base color mid-transition. An instant color
+       change has no interpolation window for that flash to render in. */
+}
+
+.content-area a:visited {
+    color: #8b4789;
 }
 
 .content-area a:hover {
     color: var(--accent-red);
     text-decoration: underline;
-}
-
-.content-area a:visited {
-    color: #8b4789;
 }
 
 .content-area p {
