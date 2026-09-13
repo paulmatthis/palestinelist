@@ -32,7 +32,7 @@ const TAB_TO_HASH = {
 // bare tab hash is used, e.g. #supplements lands on globalsolidarity).
 // Nested URL form is "<tab>/<subtab>" — e.g. "#supplements/genocide".
 const TAB_SUBTABS = {
-    'supplements': ['solidarity', 'liberation', 'genocide', 'timeline']
+    'supplements': ['solidarity', 'liberation', 'genocide', 'apartheid', 'timeline']
 };
 
 // Old subtab slugs that should resolve to a current one. Useful when a
@@ -43,6 +43,29 @@ const SUBTAB_ALIASES = {
         'globalsolidarity': 'solidarity'
     }
 };
+
+// Remember the page's original <title> (before any tab switching) so we can
+// prefix it per-tab/subtab (e.g. "It's a Genocide | The Palestine List | …")
+// without hardcoding the site name twice. Captured at script-parse time,
+// before TabManager ever touches document.title.
+const BASE_TITLE = document.title;
+
+// Path segments that belong to js/books.js's modal routing (#book/<isbn> etc.
+// today). Excluded from path-based tab resolution so a real /book/... URL
+// (if one is ever linked) can't be hijacked into the Books tab by the path
+// parser. That hash-only scheme is out of scope here.
+const MODAL_PATH_HEADS = new Set(['book', 'author', 'publisher']);
+
+// Tabs with a real, server-side route: a Cloudflare Worker in front of the
+// static host serves index.html with correct per-route preview metadata for
+// these paths (see worker-supplements/). The address bar only ever writes a
+// real path (e.g. /supplements/genocide) for these tabs. Every other tab
+// keeps writing the old hash scheme (#books, #video, etc), because the
+// origin is a plain static host with no route for e.g. /books: a bookmarked
+// or reloaded real-path URL there would 404, while a hash fragment never
+// reaches the server at all and so can never 404 regardless of what the
+// origin serves.
+const PATH_ROUTED_TABS = new Set(['supplements']);
 
 class TabManager {
     constructor() {
@@ -91,8 +114,11 @@ class TabManager {
             });
         });
 
-        // React to browser back/forward and to someone editing the URL hash.
-        window.addEventListener('hashchange', () => this.syncTabFromHash());
+        // popstate fires for both path and hash history entries (back/forward).
+        // hashchange fires when only the hash portion changes directly. Both
+        // call the same idempotent sync function, so it's safe to listen for both.
+        window.addEventListener('popstate', () => this.syncFromLocation());
+        window.addEventListener('hashchange', () => this.syncFromLocation());
 
         // Set up hamburger menu
         this.hamburger.addEventListener('click', () => this.toggleSidebar());
@@ -108,19 +134,24 @@ class TabManager {
         // Set up scroll listener for active outline
         this.contentArea.addEventListener('scroll', () => this.updateActiveOutlineItem());
 
-        // Initialize first tab/subtab based on URL hash. Falls back to 'home'
-        // for empty/unknown hashes. Skip URL update on initial call so landing
-        // on "/" doesn't rewrite to "/#home".
-        const parsed = this.parseHash();
-        const initialTab = parsed.tab || 'home';
-        this.switchTab(initialTab, { updateHash: false, subtab: parsed.subtab, section: parsed.section });
+        // Initialize first tab/subtab. Real paths (e.g. /supplements/genocide)
+        // take priority. That's what a Cloudflare Worker rewrites per-route
+        // preview metadata for, so it must win over a stale hash. Falls back
+        // to the legacy hash scheme (#supplements/genocide) for old shared
+        // links, then to 'home' for empty/unknown locations. Skip URL update
+        // on initial call so landing on "/" doesn't rewrite anything yet.
+        const located = this.resolveLocation();
+        const initialTab = located.tab || 'home';
+        this.switchTab(initialTab, { updateHash: false, subtab: located.subtab, section: located.section });
 
-        // If the user landed on an aliased or non-canonical hash (e.g.
-        // #supplements/globalsolidarity), silently rewrite the address bar to
-        // the canonical form. We use replaceState so we don't push a junk
-        // history entry for the old URL.
-        if (parsed.tab) {
-            this.canonicalizeHash();
+        // If the user landed on an aliased/non-canonical hash (e.g.
+        // #supplements/globalsolidarity) or an old hash-based tab link,
+        // silently rewrite the address bar to the canonical path form. We use
+        // replaceState so we don't push a junk history entry for the old URL.
+        // Skip entirely for a truly unrecognized location (located.tab null)
+        // so a stray/typo'd URL isn't clobbered into "/".
+        if (located.tab) {
+            this.canonicalizeLocation();
         }
 
         // Dark mode toggle
@@ -195,10 +226,13 @@ class TabManager {
         // Hide sidebar on mobile
         this.hideSidebar();
 
-        // Sync URL hash so users can copy the current tab's link from the address bar.
+        // Sync the address bar (real path, e.g. /supplements/genocide) so
+        // users can copy the current tab's link, and update the browser tab
+        // title to match.
         if (updateHash) {
-            this.writeHash();
+            this.writeLocation();
         }
+        this.updateDocumentTitle();
     }
 
     // Switch subtab within the current top tab. Does not change activeTab.
@@ -210,7 +244,32 @@ class TabManager {
         this.generateOutline();
         this.contentArea.scrollTop = 0;
         this.hideSidebar();
-        if (updateHash) this.writeHash();
+        if (updateHash) this.writeLocation();
+        this.updateDocumentTitle();
+    }
+
+    // Set document.title to "<label> | <original site title>" for any
+    // non-home tab/subtab, matching the format used for social-preview titles
+    // (e.g. "It's a Genocide | The Palestine List | …"). Reads the label
+    // straight from the visible tab/subtab button text, so it never drifts
+    // out of sync with what's actually on the page. Home keeps the site's
+    // original, unprefixed title.
+    updateDocumentTitle() {
+        if (this.activeTab === 'home') {
+            document.title = BASE_TITLE;
+            return;
+        }
+        let label = null;
+        if (this.activeSubtab) {
+            const el = document.querySelector(
+                `.subtab-button[data-subtab="${this.activeSubtab}"] .subtab-full`);
+            label = el?.textContent.trim() || null;
+        }
+        if (!label) {
+            const el = document.querySelector(`.tab-button[data-tab="${this.activeTab}"] .tab-full`);
+            label = el?.textContent.trim() || null;
+        }
+        document.title = label ? `${label} | ${BASE_TITLE}` : BASE_TITLE;
     }
 
     // Show the named subtab inside the current activeTab and update button states.
@@ -364,59 +423,137 @@ class TabManager {
         return { tab: null, subtab: null, section: null };
     }
 
-    syncTabFromHash() {
-        const parsed = this.parseHash();
-        if (!parsed.tab) return;
-        if (parsed.tab !== this.activeTab) {
-            // Don't re-push the hash we just read from.
-            this.switchTab(parsed.tab, { updateHash: false, subtab: parsed.subtab, section: parsed.section });
-        } else if (parsed.subtab && parsed.subtab !== this.activeSubtab) {
-            this.switchSubtab(parsed.subtab, { updateHash: false });
-            if (parsed.section) this.scrollToSection(parsed.section);
-        } else if (parsed.section) {
+    // Parse window.location.pathname into { tab, subtab }. Mirrors parseHash's
+    // shape but for real paths (e.g. "/supplements/genocide"), which is what a
+    // Cloudflare Worker can see and rewrite per-route preview metadata for
+    // (URL fragments never reach the server, so the hash scheme alone can't
+    // support that). Bare "/" and unrecognized paths return tab: null so the
+    // caller falls back to parseHash() / the default.
+    parsePath() {
+        const raw = (window.location.pathname || '/').replace(/^\/+|\/+$/g, '');
+        if (!raw) return { tab: null, subtab: null };
+
+        const slash = raw.indexOf('/');
+        const head = slash === -1 ? raw : raw.slice(0, slash);
+        if (MODAL_PATH_HEADS.has(head)) return { tab: null, subtab: null };
+
+        const tab = HASH_TO_TAB[head];
+        if (!tab) return { tab: null, subtab: null };
+        if (slash === -1) return { tab, subtab: null };
+
+        let sub = raw.slice(slash + 1);
+        const subs = TAB_SUBTABS[tab];
+        const aliases = SUBTAB_ALIASES[tab];
+        if (aliases && aliases[sub]) sub = aliases[sub];
+        if (subs && subs.includes(sub)) return { tab, subtab: sub };
+
+        // Recognized tab, unrecognized subtab segment. Still route to the tab.
+        return { tab, subtab: null };
+    }
+
+    // Resolve the current location to { tab, subtab, section }, preferring a
+    // real path over the legacy hash scheme. When a path carries the route,
+    // any hash present is interpreted purely as a section anchor (not a
+    // second, redundant tab token). Modal hashes are left alone entirely for
+    // js/books.js to handle.
+    resolveLocation() {
+        const pathParsed = this.parsePath();
+        if (pathParsed.tab) {
+            let section = null;
+            if (!MODAL_HASH_RE.test(window.location.hash || '')) {
+                const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
+                if (raw && this.sectionIndex && this.sectionIndex.has(raw)) section = raw;
+            }
+            return { tab: pathParsed.tab, subtab: pathParsed.subtab, section };
+        }
+        return this.parseHash();
+    }
+
+    syncFromLocation() {
+        const located = this.resolveLocation();
+        if (!located.tab) return;
+        if (located.tab !== this.activeTab) {
+            // Don't re-push the location we just read from.
+            this.switchTab(located.tab, { updateHash: false, subtab: located.subtab, section: located.section });
+        } else if (located.subtab && located.subtab !== this.activeSubtab) {
+            this.switchSubtab(located.subtab, { updateHash: false });
+            if (located.section) this.scrollToSection(located.section);
+        } else if (located.section) {
             // Already on the right tab/subtab — just scroll to the section.
-            this.scrollToSection(parsed.section);
+            this.scrollToSection(located.section);
         }
     }
 
-    // The canonical hash string for the current activeTab/activeSubtab.
-    // Tabs with subtabs always include the active subtab in the URL
-    // (so "#supplements/solidarity", not bare "#supplements"). A bare
-    // "#supplements" still resolves on landing — see parseHash — and gets
-    // rewritten to the explicit form by canonicalizeHash.
+    // The canonical hash string for the current activeTab/activeSubtab. The
+    // address-bar form for any tab NOT in PATH_ROUTED_TABS.
     canonicalHash() {
-        const tabHash = TAB_TO_HASH[this.activeTab];
-        if (!tabHash) return null;
-        if (this.activeSubtab) {
-            return `#${tabHash}/${this.activeSubtab}`;
-        }
-        return `#${tabHash}`;
+        const tabSlug = TAB_TO_HASH[this.activeTab];
+        if (!tabSlug) return null;
+        return this.activeSubtab ? `#${tabSlug}/${this.activeSubtab}` : `#${tabSlug}`;
     }
 
-    // Push the canonical hash. Used when the user actively navigates so
-    // back/forward gets a history entry for each navigation.
-    writeHash() {
+    // The canonical real path for the current activeTab/activeSubtab. Only
+    // meaningful when activeTab is in PATH_ROUTED_TABS. Callers check that
+    // first. Tabs with subtabs always include the active subtab in the path
+    // (so "/supplements/solidarity", not bare "/supplements").
+    canonicalPath() {
+        const tabSlug = TAB_TO_HASH[this.activeTab];
+        if (!tabSlug) return null;
+        return this.activeSubtab ? `/${tabSlug}/${this.activeSubtab}` : `/${tabSlug}`;
+    }
+
+    // Push the canonical location. Used when the user actively navigates so
+    // back/forward gets a history entry for each navigation. PATH_ROUTED_TABS
+    // write a real path (dropping any stale hash); every other tab writes an
+    // absolute "/#hash" (dropping any stale real path, e.g. coming back from
+    // a Supplements deep link) so it never ends up nested under a leftover
+    // "/supplements" prefix.
+    writeLocation() {
+        if (PATH_ROUTED_TABS.has(this.activeTab)) {
+            const newPath = this.canonicalPath();
+            if (newPath && window.location.pathname + window.location.hash !== newPath) {
+                history.pushState(null, '', newPath);
+            }
+            return;
+        }
         const newHash = this.canonicalHash();
-        if (newHash && window.location.hash !== newHash) {
-            history.pushState(null, '', newHash);
+        const newUrl = newHash && `/${newHash}`;
+        if (newUrl && window.location.pathname + window.location.hash !== newUrl) {
+            history.pushState(null, '', newUrl);
         }
     }
 
-    // Replace (not push) the address bar with the canonical hash. Called once
-    // on landing if the URL is non-canonical (e.g. an aliased subtab slug)
-    // so we don't pollute history with the rewritten entry.
-    canonicalizeHash() {
+    // Replace (not push) the address bar with the canonical location. Called
+    // once on landing if the URL is non-canonical (e.g. an aliased subtab
+    // slug, or an old #hash link into Supplements) so we don't pollute
+    // history with the rewritten entry.
+    canonicalizeLocation() {
         // Don't rewrite modal hashes (owned by js/books.js); landing on
         // #book/<isbn> etc. must preserve the full fragment.
         if (MODAL_HASH_RE.test(window.location.hash)) return;
-        // Don't rewrite a section deep-link (e.g. #techforpalestine) to the bare
-        // tab hash — the section fragment must survive so the link keeps working.
+
+        if (PATH_ROUTED_TABS.has(this.activeTab)) {
+            // A valid section-anchor hash is preserved and appended to the new path.
+            const rawHash = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
+            const hasSectionHash = rawHash && this.sectionIndex && this.sectionIndex.has(rawHash);
+            const canonical = this.canonicalPath();
+            if (!canonical) return;
+            const desired = hasSectionHash ? `${canonical}#${rawHash}` : canonical;
+            const current = window.location.pathname + window.location.hash;
+            if (desired !== current) history.replaceState(null, '', desired);
+            return;
+        }
+
+        // Hash-scheme tabs: don't rewrite a section deep-link (e.g.
+        // #techforpalestine) to the bare tab hash. The section fragment
+        // must survive so the link keeps working.
         const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
         if (this.sectionIndex && this.sectionIndex.has(raw)) return;
         const canonical = this.canonicalHash();
-        if (canonical && window.location.hash !== canonical) {
-            history.replaceState(null, '', canonical);
-        }
+        if (!canonical) return;
+        const desired = `/${canonical}`;
+        const current = window.location.pathname + window.location.hash;
+        if (desired !== current) history.replaceState(null, '', desired);
     }
 
     // The DOM element whose headings should populate the outline. Scopes to

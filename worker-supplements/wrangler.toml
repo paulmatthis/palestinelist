@@ -1,0 +1,22 @@
+# Cloudflare Worker config for per-subtab social-preview metadata.
+# See README.md in this directory for the full deploy walkthrough.
+
+name = "palestinelist-supplements-meta"
+main = "worker.js"
+compatibility_date = "2026-05-13"
+
+workers_dev = false
+preview_urls = false
+
+# Scoped narrowly to /supplements/* on the main domain. Every other request
+# (/, /books, static assets, etc) doesn't match this pattern and never
+# reaches this Worker at all. Cloudflare routes it straight to origin.
+routes = [
+  { pattern = "palestinelist.com/supplements/*", zone_name = "palestinelist.com" },
+  { pattern = "www.palestinelist.com/supplements/*", zone_name = "palestinelist.com" }
+]
+
+[observability]
+enabled = true
+[observability.logs]
+enabled = true
