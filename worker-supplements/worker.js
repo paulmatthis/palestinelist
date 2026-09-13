@@ -67,7 +67,32 @@ export default {
     const fullTitle = `${meta.title} | ${SITE_TITLE_SUFFIX}`;
     const canonicalUrl = `https://palestinelist.com/supplements/${match[1]}`;
 
+    // index.html's CSS/JS/image references are relative ("css/styles.css",
+    // "js/main.js"), fine when the page is served at "/", but this Worker
+    // serves the SAME document at nested paths like "/supplements/genocide".
+    // Left alone, the browser resolves those relative URLs against
+    // "/supplements/" (dropping the last path segment), so every asset
+    // 404s: unstyled page, and no JS at all (search, routing, everything
+    // breaks). A <base> tag would fix this but has its own side effect: it
+    // also changes how plain in-page anchors like <a href="#some-heading">
+    // resolve, which would send anyone who clicks one of those (most aren't
+    // JS-intercepted) to a full page reload at "/#some-heading" instead of
+    // scrolling in place. Rewriting just these specific relative attributes
+    // to absolute URLs fixes the asset loading without touching how any
+    // anchor link resolves.
+    const rewriteIfRelative = (attr) => ({
+      element(el) {
+        const value = el.getAttribute(attr);
+        if (value && !/^(https?:)?\/\//i.test(value) && !value.startsWith('/')) {
+          el.setAttribute(attr, `https://palestinelist.com/${value}`);
+        }
+      },
+    });
+
     const rewriter = new HTMLRewriter()
+      .on('link[href]', rewriteIfRelative('href'))
+      .on('script[src]', rewriteIfRelative('src'))
+      .on('img[src]', rewriteIfRelative('src'))
       .on('title', {
         element(el) { el.setInnerContent(fullTitle); },
       })
