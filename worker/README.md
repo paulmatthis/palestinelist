@@ -19,9 +19,20 @@ high-traffic site, so you'll be nowhere near that.
 Thaura usage: $0.50 per million input tokens, $2.00 per million output tokens.
 A typical "help me decide" call sends ~30 candidates (~2,000 input tokens) and
 gets a small JSON response (~150 output tokens), so each call costs roughly
-**$0.0013** — under a fifth of a cent. 1000 calls a month is about $1.30.
+**$0.0013**, under a fifth of a cent. 1000 calls a month is about $1.30.
 
-## One-time setup
+## Status: deployed and live
+
+Already set up and wired in. `js/search.js`'s `WORKER_BASE` points at
+`https://search.palestinelist.com` (a custom subdomain, not the
+`*.workers.dev` default), secrets are already set, and
+`.github/workflows/deploy-worker.yml` auto-deploys on every push to `main`
+that touches `worker/**`. None of the one-time setup below needs redoing,
+it's kept here for reference (rotating the Thaura key, setting up a fresh
+Cloudflare account if this ever needs to move, etc).
+
+<details>
+<summary>Original one-time setup steps</summary>
 
 1. Install wrangler (Cloudflare's CLI):
    ```bash
@@ -44,25 +55,17 @@ gets a small JSON response (~150 output tokens), so each call costs roughly
    ```bash
    wrangler deploy
    ```
-   Wrangler prints the URL it deployed to, something like
-   `https://palestinelist-search.<your-subdomain>.workers.dev`.
-   That's the URL the site will call.
+5. Set up a custom subdomain (`search.palestinelist.com`) under this Worker's
+   Triggers tab in the Cloudflare dashboard, and point `WORKER_BASE` in
+   `js/search.js` at it.
 
-## Wire it into the site
-
-Open `/js/search.js` in the repo and update the constant:
-
-```js
-const WORKER_BASE = "https://palestinelist-search.<your-subdomain>.workers.dev";
-```
-
-(Or, if you set up a custom subdomain like `search.palestinelist.com` in
-Cloudflare's Workers → Triggers, use that instead — it's cleaner.)
+</details>
 
 ## Updating later
 
-When you change `worker.js`, just run `wrangler deploy` again from this folder.
-Secrets stay set across deploys.
+Push a change to `worker.js` on `main` and the GitHub Action deploys it
+automatically. To deploy manually instead: `wrangler deploy` from this
+folder. Secrets stay set across deploys either way.
 
 ## Testing locally
 
@@ -79,8 +82,8 @@ curl http://127.0.0.1:8787/api/healthz
 
 ## Endpoints
 
-- `POST /api/recommend` — "help me decide" flow. See `worker.js` header
+- `POST /api/recommend`: "help me decide" flow. See `worker.js` header
   comment for the request shape.
-- `POST /api/semantic-rank` — natural-language search. Takes a query and a
+- `POST /api/semantic-rank`: natural-language search. Takes a query and a
   pre-filtered candidate list, returns ranked ids.
-- `GET  /api/healthz` — returns `ok`. Useful for uptime checks.
+- `GET  /api/healthz`: returns `ok`. Useful for uptime checks.

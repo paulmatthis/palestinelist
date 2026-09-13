@@ -12,10 +12,13 @@ The Palestine List website provides citations, sources, and media related to Pal
 
 ```
 palestinelist/
-├── index.html       # Main page
-├── css/             # Stylesheets
-├── js/              # JavaScript
-├── images/          # Images and favicon assets
+├── index.html            # Main page
+├── search-index.json     # Search index consumed by js/search.js
+├── css/                  # Stylesheets
+├── js/                   # JavaScript
+├── images/               # Images and favicon assets
+├── worker/               # Cloudflare Worker: search/recommend proxy (search.palestinelist.com)
+├── worker-supplements/    # Cloudflare Worker: social-preview metadata for /supplements/*
 ├── robots.txt
 └── sitemap.xml
 ```
