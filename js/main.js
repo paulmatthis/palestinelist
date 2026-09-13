@@ -451,20 +451,25 @@ class TabManager {
         return { tab, subtab: null };
     }
 
-    // Resolve the current location to { tab, subtab, section }, preferring a
-    // real path over the legacy hash scheme. When a path carries the route,
-    // any hash present is interpreted purely as a section anchor (not a
-    // second, redundant tab token). Modal hashes are left alone entirely for
-    // js/books.js to handle.
+    // Resolve the current location to { tab, subtab, section }. A section
+    // anchor (e.g. #h.hky9jnct4eav) always wins and routes to wherever that
+    // section actually lives, even if the current real path names a
+    // different tab — a link from Supplements to a Citations heading must
+    // land on Citations, not get stuck reading the path it was clicked from.
+    // Only once the hash isn't a recognized section does a real path take
+    // priority over the legacy hash scheme. Modal hashes are left alone
+    // entirely for js/books.js to handle.
     resolveLocation() {
+        if (!MODAL_HASH_RE.test(window.location.hash || '')) {
+            const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
+            if (raw && this.sectionIndex && this.sectionIndex.has(raw)) {
+                const sec = this.sectionIndex.get(raw);
+                return { tab: sec.tab, subtab: sec.subtab || null, section: raw };
+            }
+        }
         const pathParsed = this.parsePath();
         if (pathParsed.tab) {
-            let section = null;
-            if (!MODAL_HASH_RE.test(window.location.hash || '')) {
-                const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
-                if (raw && this.sectionIndex && this.sectionIndex.has(raw)) section = raw;
-            }
-            return { tab: pathParsed.tab, subtab: pathParsed.subtab, section };
+            return { tab: pathParsed.tab, subtab: pathParsed.subtab, section: null };
         }
         return this.parseHash();
     }
@@ -546,9 +551,16 @@ class TabManager {
 
         // Hash-scheme tabs: don't rewrite a section deep-link (e.g.
         // #techforpalestine) to the bare tab hash. The section fragment
-        // must survive so the link keeps working.
+        // must survive so the link keeps working. Still normalize a stale
+        // real-path prefix down to "/" though (e.g. arriving here via a
+        // cross-tab section link clicked from a Supplements real path).
         const raw = this.decodeHashPart((window.location.hash || '').replace(/^#/, ''));
-        if (this.sectionIndex && this.sectionIndex.has(raw)) return;
+        if (this.sectionIndex && this.sectionIndex.has(raw)) {
+            if (window.location.pathname !== '/') {
+                history.replaceState(null, '', '/' + window.location.hash);
+            }
+            return;
+        }
         const canonical = this.canonicalHash();
         if (!canonical) return;
         const desired = `/${canonical}`;
