@@ -26,7 +26,10 @@ Thumbs.db
 !.dev.vars.example
 !.env.example
 
-# Pre-cleanup search index backup
+# Backup files from tools/ scripts (e.g. search-index.json.bak-covers,
+# .bak-backfill) — always local-only, never meant to be tracked.
+*.bak
+*.bak-*
 search-index.json.backup
 
 # Local-only session handoff notes for Cowork
